@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% block body %}
+<div class="d-flex justify-content-between"><h3>Incident #{{inc.incident_id}} <span class="badge bg-secondary">{{inc.status}}</span></h3>
+{% if can_edit %}<a class="btn btn-outline-primary" href="/incident/{{inc.incident_id}}/edit">Edit</a>{% endif %}</div>
+<p class="text-muted">{{inc.incident_date}} · {{inc.airline}} · {{inc.model}} ({{inc.registration}}) · {{inc.location}} · {{inc.phase_of_flight}} · {{inc.severity}} · {{inc.fatalities}} fatalities{% if inc.recorded_by %} · recorded by {{inc.recorded_by}}{% endif %}</p>
+<p>{{inc.description}}</p>
+<div class="row g-3">
+ <div class="col-md-6"><div class="card p-3"><h6>Causes</h6><ul class="mb-0">{% for c in causes %}
+   <li>{{c.name}} <small class="text-muted">({{c.category}})</small> {% if c.is_primary %}<span class="badge bg-danger">primary</span>{% endif %}</li>{% endfor %}</ul></div></div>
+ <div class="col-md-6"><div class="card p-3"><h6>Weather</h6>
+   {% if weather %}{{weather.condition_type}}, visibility {{weather.visibility_km}} km, wind {{weather.wind_speed_kmh}} km/h, {{weather.temperature_c}}°C{% else %}No weather recorded.{% endif %}</div></div>
+ <div class="col-md-6"><div class="card p-3"><h6>Crew</h6><ul class="mb-0">{% for c in crew %}<li>{{c.full_name}} - {{c.role_on_flight}} ({{c.injury_status}})</li>{% endfor %}</ul></div></div>
+ <div class="col-md-6"><div class="card p-3"><h6>Investigation</h6>
+  {% if inv %}Lead: {% if role != 'Airline' %}<a href="/investigators/{{inv.lead_investigator_id}}">{{inv.full_name}}</a>{% else %}{{inv.full_name}}{% endif %}<br>Started {{inv.start_date}} · {% if inv.end_date %}ended {{inv.end_date}}<br>{{inv.probable_cause_summary}}
+  {% else %}still open
+   {% if can_edit %}<form method="post" action="/investigation/{{inv.investigation_id}}/end" class="mt-2">
+    <input type="date" name="end_date" class="form-control mb-2" required>
+    <input name="findings" class="form-control mb-2" placeholder="Probable cause summary">
+    <button class="btn btn-sm btn-dark">End investigation</button></form>{% endif %}{% endif %}
+  {% else %}No investigation opened yet.
+   {% if can_edit %}<form method="post" action="/incident/{{inc.incident_id}}/investigation" class="mt-2">
+    <select name="lead_investigator_id" class="form-select mb-2" required>
+     {% for v in investigators %}<option value="{{v.investigator_id}}">{{v.name}} ({{v.specialization}})</option>{% endfor %}</select>
+    <input type="date" name="start_date" class="form-control mb-2" required>
+    <button class="btn btn-sm btn-dark">Open investigation</button></form>{% endif %}{% endif %}</div></div>
+</div>
+<h5 class="mt-4">Safety recommendations</h5>
+<table class="table bg-white"><tr><th>Airline</th><th>Description</th><th>Due</th><th>Status</th></tr>
+{% for r in recs if role != 'Airline' or r.airline_id == session.airline_id %}<tr><td>{{r.airline}}</td><td>{{r.rec_text}}</td><td>{{r.due_date}}</td><td>{{r.status}}</td></tr>
+{% else %}<tr><td colspan="4">No recommendations yet.</td></tr>{% endfor %}</table>
+{% if can_edit %}<div class="card p-3"><h6>Issue a recommendation</h6>
+ <form method="post" action="/incident/{{inc.incident_id}}/recommendation" class="row g-2">
+  <div class="col-md-3"><select name="airline_id" class="form-select">
+   {% for a in airlines %}<option value="{{a.airline_id}}" {{'selected' if a.airline_id==inc.airline_id}}>{{a.name}}</option>{% endfor %}</select></div>
+  <div class="col-md-5"><input name="rec_text" class="form-control" placeholder="Recommendation" required></div>
+  <div class="col-md-2"><input type="date" name="due_date" class="form-control" required></div>
+  <div class="col-md-2"><button class="btn btn-primary w-100">Issue</button></div>
+ </form></div>{% endif %}{% endblock %}

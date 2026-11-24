@@ -1,0 +1,39 @@
+{% extends "base.html" %}{% block body %}
+<h3>{{ 'Edit' if edit else 'Add' }} incident</h3>
+<form method="post" class="row g-3 bg-white p-3 border rounded">
+ <div class="col-md-6"><label class="form-label">Aircraft</label><select name="aircraft_id" class="form-select" required>
+  {% for a in aircraft %}<option value="{{a.aircraft_id}}" {{'selected' if inc.aircraft_id|string==a.aircraft_id|string}}>{{a.registration}} - {{a.airline}}</option>{% endfor %}</select></div>
+ <div class="col-md-3"><label class="form-label">Date</label><input type="date" name="incident_date" class="form-control" value="{{inc.incident_date}}" required></div>
+ <div class="col-md-3"><label class="form-label">Location</label><input name="location" class="form-control" value="{{inc.location or ''}}" required></div>
+ <div class="col-md-3"><label class="form-label">Phase of flight</label><select name="phase_of_flight" class="form-select">
+  {% for p in ['Taxi','Takeoff','Climb','Cruise','Descent','Approach','Landing'] %}<option {{'selected' if inc.phase_of_flight==p}}>{{p}}</option>{% endfor %}</select></div>
+ <div class="col-md-3"><label class="form-label">Severity</label><select name="severity" class="form-select">
+  {% for s in ['Minor','Serious','Major','Fatal'] %}<option {{'selected' if inc.severity==s}}>{{s}}</option>{% endfor %}</select></div>
+ <div class="col-md-3"><label class="form-label">Fatalities</label><input type="number" min="0" name="fatalities" class="form-control" value="{{inc.fatalities or 0}}"></div>
+ <div class="col-md-3"><label class="form-label">Injuries</label><input type="number" min="0" name="injuries" class="form-control" value="{{inc.injuries or 0}}"></div>
+ <div class="col-12"><label class="form-label">Description</label><textarea name="description" class="form-control" rows="3">{{inc.description or ''}}</textarea></div>
+ {% if not edit %}
+ <div class="col-12"><h5 class="mb-0">Causes</h5><small class="text-muted">Tick every cause, then choose the primary one.</small></div>
+ <div class="col-md-8">{% for c in causes %}<div class="form-check form-check-inline">
+  <input class="form-check-input" type="checkbox" name="causes" value="{{c.cause_id}}" id="c{{c.cause_id}}" {{'checked' if c.cause_id|string in sel_causes}}>
+  <label class="form-check-label" for="c{{c.cause_id}}">{{c.cause_name}}</label></div>{% endfor %}</div>
+ <div class="col-md-4"><label class="form-label">Primary cause</label><select name="primary_cause" class="form-select" required>
+  {% for c in causes %}<option value="{{c.cause_id}}">{{c.cause_name}}</option>{% endfor %}</select></div>
+ <div class="col-12"><h5 class="mb-0">Weather (optional)</h5></div>
+ <div class="col-md-3"><select name="condition_type" class="form-select"><option value="">None recorded</option>
+  {% for w in ['Clear','Rain','Fog','Snow','Thunderstorm','Crosswind'] %}<option>{{w}}</option>{% endfor %}</select></div>
+ <div class="col-md-3"><input type="number" step="0.1" min="0" name="visibility_km" class="form-control" placeholder="Visibility (km)"></div>
+ <div class="col-md-3"><input type="number" min="0" name="wind_speed_kmh" class="form-control" placeholder="Wind (km/h)"></div>
+ <div class="col-md-3"><input type="number" name="temperature_c" class="form-control" placeholder="Temperature (C)"></div>
+ <div class="col-12"><h5 class="mb-0">Crew (optional, up to 4)</h5></div>
+ {% for i in range(4) %}
+ <div class="col-md-5"><select name="crew_{{i}}" class="form-select"><option value="">No crew member</option>
+  {% for m in crew %}<option value="{{m.crew_id}}">{{m.name}} ({{m.role}})</option>{% endfor %}</select></div>
+ <div class="col-md-4"><select name="role_{{i}}" class="form-select">
+  {% for r in ['Captain','First Officer','Flight Attendant','Flight Engineer'] %}<option>{{r}}</option>{% endfor %}</select></div>
+ <div class="col-md-3"><select name="injury_{{i}}" class="form-select">
+  {% for s in ['None','Minor','Serious','Fatal'] %}<option>{{s}}</option>{% endfor %}</select></div>
+ {% endfor %}
+{% endif %}
+ <div class="col-12"><button class="btn btn-primary">Save incident</button></div>
+</form>{% endblock %}

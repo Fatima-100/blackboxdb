@@ -1,0 +1,28 @@
+# Secrets and local settings
+.env
+*.pem
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# SQL Server / SSMS / editors
+*.bak
+*.ldf
+*.mdf
+.vs/
+.vscode/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploaded evidence files (keep the folder and the 5 small sample files only)
+uploads/*
+!uploads/.gitkeep
+!uploads/sample_*

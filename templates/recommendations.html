@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block body %}
+<h3>Recommendation tracker</h3>
+<table class="table bg-white align-middle"><thead><tr><th>ID</th><th>Incident</th><th>Airline</th><th>Due</th><th>Status</th><th>Response</th></tr></thead>
+{% for r in rows %}<tr class="{{ 'table-danger' if r.overdue }}">
+ <td>{{r.rec_id}}</td><td><a href="/incident/{{r.incident_id}}">#{{r.incident_id}}</a></td><td>{{r.airline}}</td><td>{{r.due_date}}</td>
+ <td>{{r.status}}{% if r.overdue %} <span class="badge bg-danger">overdue</span>{% endif %}</td>
+ <td>{% if r.status=='Open' %}{% if can_close %}<form method="post" action="/recommendations/{{r.rec_id}}/close" class="d-flex gap-2">
+   <input name="response_text" class="form-control form-control-sm" placeholder="Airline response">
+   <button class="btn btn-sm btn-dark">Close</button></form>{% else %}<span class="text-muted">awaiting response</span>{% endif %}{% else %}{{r.response_text}}{% endif %}</td></tr>
+{% endfor %}</table>{% endblock %}

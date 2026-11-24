@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block body %}
+<h3>Audit log</h3>
+<table class="table table-sm bg-white"><thead><tr><th>#</th><th>Table</th><th>Record</th><th>Old</th><th>New</th><th>When</th><th>By</th></tr></thead>
+{% for r in rows %}<tr><td>{{r.log_id}}</td><td>{{r.table_name}}</td><td>{{r.record_id}}</td><td>{{r.old_status}}</td><td>{{r.new_status}}</td><td>{{r.changed_at}}</td><td>{{r.changed_by}}</td></tr>
+{% else %}<tr><td colspan="7">No status changes logged yet.</td></tr>{% endfor %}</table>{% endblock %}

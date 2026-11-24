@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block body %}
+<a href="/investigators">&larr; All investigators</a>
+<h3 class="mt-2">{{p.name}}</h3>
+<p class="text-muted">{{p.agency}} &middot; {{p.specialization}} &middot; {{cases|length}} investigation(s) led</p>
+<table class="table table-hover"><thead><tr><th>Incident</th><th>Airline</th><th>Location</th><th>Severity</th><th>Started</th><th>Ended</th><th>Incident status</th></tr></thead>
+{% for c in cases %}<tr><td><a href="/incident/{{c.incident_id}}">#{{c.incident_id}}</a></td><td>{{c.airline}}</td><td>{{c.location}}</td><td>{{c.severity}}</td>
+<td>{{c.start_date}}</td><td>{{ c.end_date or 'in progress' }}</td><td>{{c.status}}</td></tr>
+{% else %}<tr><td colspan="7">This investigator has not led any investigation yet.</td></tr>{% endfor %}</table>{% endblock %}

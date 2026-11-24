@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% block body %}
+<h3 class="mb-3">Safety overview</h3>
+<section class="strip mb-4">
+  <div><div class="num">{{ kpi.incidents }}</div><div class="lbl">incidents on record</div></div>
+  <div><div class="num">{{ kpi.fatalities }}</div><div class="lbl">fatalities</div></div>
+  <a class="alert-cell" href="/recommendations"><div class="num">{{ kpi.overdue }}</div><div class="lbl">recommendations past their due date. Open the tracker.</div></a>
+</section>
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card p-3"><h6>Incidents per year</h6><div class="chartbox"><canvas id="c1"></canvas></div></div></div>
+  <div class="col-lg-4"><div class="card p-3"><h6>Severity split</h6><div class="chartbox"><canvas id="c3"></canvas></div></div></div>
+  <div class="col-12"><div class="card p-3"><h6>Most frequent causes</h6><div class="chartbox"><canvas id="c2"></canvas></div></div></div>
+</div>
+<script>
+Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
+Chart.defaults.color = "#44536a";
+const opt = {responsive:true, maintainAspectRatio:false};
+new Chart(c1,{type:'line',data:{labels:{{ years|tojson }},datasets:[{label:'Incidents',data:{{ year_n|tojson }},
+  borderColor:'#ff6a13',backgroundColor:'rgba(255,106,19,.14)',fill:true,tension:.3,pointBackgroundColor:'#ff6a13'}]},
+  options:{...opt,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+new Chart(c2,{type:'bar',data:{labels:{{ cause_l|tojson }},datasets:[{data:{{ cause_n|tojson }},backgroundColor:'#1f8a8a',borderRadius:4}]},
+  options:{...opt,indexAxis:'y',plugins:{legend:{display:false}}}});
+const sevColor={Minor:'#1f8a8a',Serious:'#f2b632',Major:'#ff6a13',Fatal:'#9b1c2e'};
+new Chart(c3,{type:'doughnut',data:{labels:{{ sev_l|tojson }},datasets:[{data:{{ sev_n|tojson }},
+  backgroundColor:{{ sev_l|tojson }}.map(s=>sevColor[s]),borderWidth:2}]},
+  options:{...opt,cutout:'62%',plugins:{legend:{position:'bottom'}}}});
+</script>{% endblock %}

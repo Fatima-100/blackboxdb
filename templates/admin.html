@@ -1,0 +1,35 @@
+{% extends "base.html" %}{% block body %}
+<h3>Admin</h3>
+<div class="row g-3">
+ <div class="col-12"><div class="card p-3"><h6>Add airline <small class="text-muted">({{ airlines|length }} on record)</small></h6>
+  <form method="post" action="/admin/add/airline" class="row g-2">
+   <div class="col-md-5"><input name="name" class="form-control" placeholder="Airline name" required></div>
+   <div class="col-md-3"><input name="country" class="form-control" placeholder="Country" required></div>
+   <div class="col-md-2"><input name="iata_code" maxlength="2" class="form-control" placeholder="IATA code" required></div>
+   <div class="col-md-2"><button class="btn btn-primary w-100">Add airline</button></div></form></div></div>
+ <div class="col-12"><div class="card p-3"><h6>Add aircraft <small class="text-muted">({{ n_aircraft }} on record)</small></h6>
+  <form method="post" action="/admin/add/aircraft" class="row g-2">
+   <div class="col-md-3"><input name="registration_no" class="form-control" placeholder="Registration, e.g. AP-900" required></div>
+   <div class="col-md-3"><select name="airline_id" class="form-select">{% for a in airlines %}<option value="{{a.airline_id}}">{{a.name}}</option>{% endfor %}</select></div>
+   <div class="col-md-3"><select name="type_id" class="form-select">{% for t in types %}<option value="{{t.type_id}}">{{t.manufacturer}} {{t.model}}</option>{% endfor %}</select></div>
+   <div class="col-md-1"><input type="number" name="year_built" min="1950" max="2030" class="form-control" placeholder="Year" required></div>
+   <div class="col-md-2"><button class="btn btn-primary w-100">Add aircraft</button></div></form></div></div>
+ <div class="col-12"><div class="card p-3"><h6>Add investigator <small class="text-muted">({{ n_inv }} on record)</small></h6>
+  <form method="post" action="/admin/add/investigator" class="row g-2">
+   <div class="col-md-4"><input name="name" class="form-control" placeholder="Full name" required></div>
+   <div class="col-md-3"><input name="agency" class="form-control" placeholder="Agency" required></div>
+   <div class="col-md-3"><input name="specialization" class="form-control" placeholder="Specialization" required></div>
+   <div class="col-md-2"><button class="btn btn-primary w-100">Add investigator</button></div></form></div></div>
+
+ <div class="col-12"><div class="card p-3"><h6>Add user</h6>
+  <form method="post" action="/admin/user" class="row g-2">
+   <div class="col-md-2"><input name="username" class="form-control" placeholder="Username" required></div>
+   <div class="col-md-3"><input name="full_name" class="form-control" placeholder="Full name" required></div>
+   <div class="col-md-2"><select name="role" class="form-select">{% for r in ['Admin','Investigator','Officer','Airline'] %}<option>{{r}}</option>{% endfor %}</select></div>
+   <div class="col-md-2"><select name="airline_id" class="form-select"><option value="">Airline (only for Airline role)</option>
+    {% for a in airlines %}<option value="{{a.airline_id}}">{{a.name}}</option>{% endfor %}</select></div>
+   <div class="col-md-2"><input type="password" name="password" class="form-control" placeholder="Password" required></div>
+   <div class="col-md-1"><button class="btn btn-primary w-100">Add</button></div></form>
+  <table class="table table-sm mt-3 mb-0"><thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Airline</th></tr></thead>
+   {% for u in users %}<tr><td>{{u.username}}</td><td>{{u.full_name}}</td><td>{{u.role}}</td><td>{{u.airline or '-'}}</td></tr>{% endfor %}</table></div></div>
+</div>{% endblock %}

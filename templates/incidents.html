@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% block body %}
+<div class="d-flex justify-content-between mb-3"><h3>Incidents</h3>{% if can_edit %}<a class="btn btn-primary" href="/incident/new">Add incident</a>{% endif %}</div>
+<form class="row g-2 mb-3">
+  <div class="col-md-3"><select name="airline" class="form-select"><option value="">All airlines</option>
+    {% for a in airlines %}<option value="{{a.airline_id}}" {{'selected' if f.airline|string==a.airline_id|string}}>{{a.name}}</option>{% endfor %}</select></div>
+  <div class="col-md-3"><select name="type" class="form-select"><option value="">All aircraft types</option>
+    {% for t in types %}<option value="{{t.type_id}}" {{'selected' if f.type|string==t.type_id|string}}>{{t.model}}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><select name="year" class="form-select"><option value="">All years</option>
+    {% for y in years %}<option {{'selected' if f.year|string==y.y|string}}>{{y.y}}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><select name="severity" class="form-select"><option value="">All severities</option>
+    {% for s in ['Minor','Serious','Major','Fatal'] %}<option {{'selected' if f.severity==s}}>{{s}}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><button class="btn btn-dark w-100">Filter</button></div>
+</form>
+<table class="table table-sm table-hover bg-white"><thead><tr><th>ID</th><th>Date</th><th>Airline</th><th>Aircraft</th><th>Location</th><th>Severity</th><th>Status</th></tr></thead>
+{% for r in rows %}<tr><td><a href="/incident/{{r.incident_id}}">{{r.incident_id}}</a></td><td>{{r.incident_date}}</td><td>{{r.airline}}</td>
+<td>{{r.model}} ({{r.registration}})</td><td>{{r.location}}</td><td>{{r.severity}}</td><td>{{r.status}}</td></tr>
+{% else %}<tr><td colspan="7">No incidents match these filters.</td></tr>{% endfor %}</table>{% endblock %}

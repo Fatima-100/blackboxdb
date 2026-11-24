@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block body %}
+<div class="d-flex justify-content-between mb-3"><h3>Investigators</h3>{% if role == 'Admin' %}<a class="btn btn-primary" href="/admin">Add investigator</a>{% endif %}</div>
+<table class="table table-hover align-middle"><thead><tr><th>Name</th><th>Agency</th><th>Specialization</th><th>Investigations</th><th>Still open</th><th>Avg. days to close</th></tr></thead>
+{% for r in rows %}<tr><td><a href="/investigators/{{r.investigator_id}}">{{r.name}}</a></td><td>{{r.agency}}</td><td>{{r.specialization}}</td>
+<td>{{r.total}}</td><td>{{r.open_cases}}</td><td>{{ r.avg_days if r.avg_days is not none else '-' }}</td></tr>
+{% else %}<tr><td colspan="6">No investigators yet.</td></tr>{% endfor %}</table>{% endblock %}

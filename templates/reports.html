@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% block body %}
+<h3>Reports</h3>
+{% for title, cols, rows in reports %}
+<h6 class="mt-4">{{title}}</h6>
+<table class="table table-sm bg-white"><thead><tr>{% for c in cols %}<th>{{c}}</th>{% endfor %}</tr></thead>
+{% for r in rows %}<tr>{% for c in cols %}<td>{{r[c]}}</td>{% endfor %}</tr>{% else %}<tr><td>No results.</td></tr>{% endfor %}</table>
+{% endfor %}
+<h6 class="mt-4">View: airline safety summary</h6>
+<table class="table table-sm bg-white"><thead><tr><th>Airline</th><th>Incidents</th><th>Fatalities</th><th>Unresolved recs</th></tr></thead>
+{% for a in airlines %}<tr><td>{{a.airline}}</td><td>{{a.incidents}}</td><td>{{a.fatalities}}</td><td>{{a.unresolved_recs}}</td></tr>{% endfor %}</table>
+{% endblock %}
