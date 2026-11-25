@@ -211,3 +211,7 @@ DELETE FROM Airport WHERE name LIKE 'TEST%';
 DELETE FROM Aircraft_Type WHERE manufacturer = 'TESTMAKER';
 DELETE FROM Airline WHERE name LIKE 'TEST%';
 GO
+
+
+
+
