@@ -5,7 +5,8 @@ import pyodbc
 import datetime as dt
 from db import query, execute, clean, conn
 from reports_sql import REPORTS
-
+import import_routes
+import_routes.register(app, PERMS)
 app = Flask(__name__)
 app.secret_key = "blackboxdb-dev"
 

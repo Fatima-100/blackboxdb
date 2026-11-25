@@ -61,3 +61,22 @@ Upload it again: 0 imported, 27 duplicates, the same 3 errors.
   Checked against the Incident table, and with ROW_NUMBER() inside the file (first row stays, later copies are Duplicate).
 - **Why one transaction?** If anything fails halfway, ROLLBACK leaves the real tables as they were; the batch is marked Failed.
 - **Why does validation also check the aircraft's year_built?** The trigger trg_incident_date would reject that row and roll back the whole batch; checking first turns it into one clear error row.
+
+## Flask page (import_routes.py + templates/import*.html)
+Wiring (3 small edits):
+1. `app.py`, before `if __name__ == "__main__":` add
+   ```python
+   import import_routes
+   import_routes.register(app, PERMS)
+   ```
+   (`register` adds the 5 routes and puts them in PERMS for Admin and Officer only, so the existing `guard()` protects them.)
+2. `templates/base.html`, in the `<nav>` after the Reports link add
+   ```html
+   {% if role in ('Admin', 'Officer') %}<a class="nav-item {{ 'active' if request.endpoint in ('import_page','import_preview','import_result') }}" href="/import">Import data</a>{% endif %}
+   ```
+3. Copy `import_routes.py` to the project root and `templates/import.html`, `import_preview.html`, `import_result.html` into `templates/`.
+
+Pages: `/import` (upload + history), `/import/<id>` (preview, error list, "Import valid rows"), `/import/<id>/result`,
+`/import/<id>/errors.csv` (download error rows; same columns as the upload plus `row` and `error`, so it can be fixed and uploaded again).
+Limits: .csv only, UTF-8 (a UTF-8 BOM is accepted), 5 MB, 20,000 rows, `;` or `,` separated. Every bad file gives a red message, never a crash.
+The audit-log entry (who imported which file) is written by sp_ImportIncidents using the logged-in user name.

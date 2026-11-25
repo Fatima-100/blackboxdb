@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% macro badge(s) %}<span class="badge text-bg-{{ {'Valid':'success','Warning':'warning','Error':'danger','Duplicate':'secondary','Imported':'primary'}.get(s,'light') }}">{{ s }}</span>{% endmacro %}
+{% block body %}
+<h3>Check before importing</h3>
+<p class="text-secondary mb-3">File <strong>{{ b.file_name }}</strong> (batch #{{ b.batch_id }}, {{ b.total_rows }} rows). Row numbers count data rows; the header line is not counted.</p>
+
+<div class="row g-3 mb-4">
+  {% for s, lbl in (('Valid','Valid'),('Warning','Warnings (will import)'),('Duplicate','Duplicates (skipped)'),('Error','Errors (skipped)')) %}
+  <div class="col-6 col-md-3"><div class="card p-3 h-100">
+    <div class="text-secondary small">{{ lbl }}</div>
+    <div class="fs-2 fw-bold">{{ counts.get(s, 0) }}</div></div></div>
+  {% endfor %}
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-4">
+  <form method="post" action="{{ url_for('import_run', bid=b.batch_id) }}">
+    <button class="btn btn-primary" {{ 'disabled' if not importable }}>Import valid rows ({{ importable }})</button>
+  </form>
+  {% if counts.get('Error', 0) %}<a class="btn btn-outline-dark" href="{{ url_for('import_errors', bid=b.batch_id) }}">Download error rows (CSV)</a>{% endif %}
+  <a class="btn btn-outline-secondary" href="{{ url_for('import_page') }}">Upload another file</a>
+</div>
+{% if b.status == 'Failed' %}<div class="alert alert-danger">The last import attempt failed and was rolled back. Nothing was saved.</div>{% endif %}
+
+{% if issues %}
+<h5>Problems found {% if issues|length == 200 %}<small class="text-secondary">(first 200)</small>{% endif %}</h5>
+<div class="table-responsive mb-4"><table class="table table-sm align-middle">
+  <thead><tr><th>Row</th><th>Status</th><th>Message</th></tr></thead>
+  <tbody>{% for i in issues %}<tr><td>{{ i.row_no }}</td><td>{{ badge(i.row_status) }}</td><td>{{ i.error_message }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endif %}
+
+<h5>Preview (first 20 rows)</h5>
+<div class="table-responsive"><table class="table table-sm align-middle">
+  <thead><tr><th>Row</th><th>Date</th><th>Location</th><th>Registration</th><th>Operator</th><th>Model</th><th>Phase</th><th>Fat.</th><th>Inj.</th><th>Weather</th><th>Status</th></tr></thead>
+  <tbody>{% for r in preview %}
+    <tr><td>{{ r.row_no }}</td><td>{{ r.raw_date }}</td><td>{{ r.raw_location }}</td><td>{{ r.raw_registration }}</td><td>{{ r.raw_airline }}</td>
+        <td>{{ r.raw_model }}</td><td>{{ r.raw_phase }}</td><td>{{ r.raw_fatalities }}</td><td>{{ r.raw_injuries }}</td><td>{{ r.raw_weather }}</td><td>{{ badge(r.row_status) }}</td></tr>
+  {% endfor %}</tbody></table></div>
+{% endblock %}

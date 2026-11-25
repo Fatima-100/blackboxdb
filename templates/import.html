@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block body %}
+<h3>Import data</h3>
+<p class="text-secondary">Upload a CSV of accident records. You see a preview with errors first; nothing is saved until you press "Import valid rows".</p>
+
+<div class="card p-3 mb-4">
+  <form method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
+    <div class="col-md-8">
+      <label class="form-label fw-semibold" for="file">CSV file</label>
+      <input class="form-control" type="file" id="file" name="file" accept=".csv,text/csv" required>
+    </div>
+    <div class="col-md-4"><button class="btn btn-primary w-100">Upload and check</button></div>
+  </form>
+  <div class="small text-secondary mt-3">
+    Limits: .csv only, UTF-8, at most 5 MB and {{ '{:,}'.format(max_rows) }} rows. First line = header with these columns:
+    <code>{{ cols | join(', ') }}</code>.
+    Only date, location and registration are required. Dates are written YYYY-MM-DD.
+  </div>
+</div>
+
+<h5>Recent imports</h5>
+<div class="table-responsive"><table class="table table-sm align-middle">
+  <thead><tr><th>#</th><th>File</th><th>By</th><th>When</th><th class="text-end">Rows</th><th class="text-end">Imported</th><th class="text-end">Errors</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for h in history %}
+    <tr><td>{{ h.batch_id }}</td><td>{{ h.file_name }}</td><td>{{ h.uploaded_by }}</td><td>{{ h.uploaded_at.strftime('%Y-%m-%d %H:%M') if h.uploaded_at else '' }}</td>
+        <td class="text-end">{{ h.total_rows }}</td><td class="text-end">{{ h.ok_rows if h.status == 'Imported' else '-' }}</td><td class="text-end">{{ h.error_rows }}</td>
+        <td>{{ h.status }}</td>
+        <td><a href="{{ url_for('import_preview', bid=h.batch_id) }}">Open</a></td></tr>
+  {% else %}<tr><td colspan="9" class="text-secondary">No imports yet.</td></tr>{% endfor %}
+  </tbody></table></div>
+{% endblock %}
