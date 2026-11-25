@@ -1,0 +1,31 @@
+date,location,registration,operator,model,phase,fatalities,injuries,weather
+2019-03-12,"Phoenix, AZ",IMP-101,Desert Air Tours,Cessna 172S,Landing,0,1,VMC
+2019-07-04,"Denver, CO",IMP-102,,Piper PA-28-181,Takeoff,0,0,VMC
+2020-01-18,"Anchorage, AK",IMP-103,Northern Bush Air,De Havilland DHC-3,Approach,2,3,IMC
+2020-05-30,"Dallas, TX",IMP-104,Lone Star Regional,Embraer ERJ-190,Taxi,0,0,VMC
+2020-09-09,"Miami, FL",IMP-105,Sunshine Charters,Beechcraft 58,Climb,0,2,VMC
+2021-02-14,"Chicago, IL",IMP-106,Lakeshore Airlines,Boeing 737-800,Descent,0,7,IMC
+2021-04-22,"Seattle, WA",IMP-107,,Cirrus SR22,Cruise,1,0,IMC
+2022-02-30,"Tucson, AZ",IMP-126,Desert Air Tours,Cessna 172S,Landing,0,0,VMC
+2021-08-03,"Portland, OR",IMP-108,Cascade Flying Club,Cessna 172S,Landing,0,0,VMC
+2021-10-19,"Atlanta, GA",IMP-109,Peach State Air,Airbus A320-214,Approach,0,3,IMC
+2022-01-07,"Salt Lake City, UT",IMP-110,Wasatch Air,ATR 72-212,Landing,0,12,IMC
+2022-03-25,"Houston, TX",IMP-111,Gulf Coast Helicopters,Robinson R44,Hover,0,1,VMC
+2022-05-16,"Las Vegas, NV",IMP-112,,Mooney M20J,Takeoff,1,1,VMC
+2022-07-29,"Honolulu, HI",IMP-113,Island Hopper,De Havilland DHC-6,Landing,0,4,VMC
+2022-09-12,"Nashville, TN",IMP-114,Music City Air,Embraer ERJ-145,Climb,0,0,VMC
+2022-11-30,"Fairbanks, AK",IMP-103,Northern Bush Air,De Havilland DHC-3,Takeoff,0,1,IMC
+2023-07-07,"Omaha, NE",IMP-127,Plains Air,Piper PA-28-181,Takeoff,-2,0,VMC
+2023-02-08,"Detroit, MI",IMP-115,Great Lakes Regional,Bombardier CRJ-200,Approach,0,0,IMC
+2023-04-14,"Orlando, FL",IMP-105,Sunshine Charters,Beechcraft 58,Landing,0,0,VMC
+2023-06-21,"San Diego, CA",IMP-116,Pacific Skies,Boeing 737-800,Taxi,0,2,VMC
+2023-08-05,"Kansas City, MO",IMP-117,,Piper PA-34-200T,Cruise,3,0,IMC
+2023-10-27,"Minneapolis, MN",IMP-118,North Star Air,Airbus A321-211,Descent,0,5,IMC
+2024-01-13,"Albuquerque, NM",IMP-119,Sandia Air,Cessna 182T,Landing,0,0,VMC
+2024-09-09,"Tulsa, OK",,Prairie Air,Cessna 182T,Landing,0,1,VMC
+2024-03-09,"Charlotte, NC",IMP-120,Carolina Express,Embraer ERJ-175,Takeoff,0,0,VMC
+2024-05-26,"Boise, ID",IMP-121,,Cirrus SR20,Approach,0,1,VMC
+2024-08-17,"Tampa, FL",IMP-122,Bay Aviation,Beechcraft 76,Climb,0,0,VMC
+2024-10-04,"Cleveland, OH",IMP-123,Erie Wings,ATR 42-500,Landing,0,2,IMC
+2025-02-21,"Reno, NV",IMP-124,Sierra Air,Pilatus PC-12,Approach,0,1,IMC
+2025-06-15,"Burlington, VT",IMP-125,Green Mountain Air,Cessna 172S,Takeoff,0,0,VMC
