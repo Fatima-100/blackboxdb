@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block body %}
+<h4 class="mb-3">Query Library <small class="text-muted fs-6">group 1: {{ queries|length }} queries</small></h4>
+
+<form class="row g-2 mb-3" method="get" action="/queries">
+  <div class="col-auto"><input class="form-control form-control-sm" name="tag" value="{{ tag }}" placeholder="Filter by clause, e.g. GROUP BY"></div>
+  <div class="col-auto"><button class="btn btn-sm btn-primary">Filter</button>
+  {% if tag %}<a class="btn btn-sm btn-outline-secondary" href="/queries">Clear</a>{% endif %}</div>
+</form>
+
+<div class="row">
+  <div class="col-lg-4 mb-3">
+    <div class="list-group">
+      {% for q in queries %}
+      <a class="list-group-item list-group-item-action {{ 'active' if selected and selected.id == q.id }}"
+         href="/queries?id={{ q.id }}{% if tag %}&tag={{ tag|urlencode }}{% endif %}">
+        <b>{{ q.id }}</b> <span class="badge bg-secondary">{{ q.clause }}</span><br>
+        <small>{{ q.question }}</small>
+      </a>
+      {% else %}<div class="text-muted p-2">No query matches this clause.</div>{% endfor %}
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+  {% if selected %}
+    <h5>{{ selected.id }} - {{ selected.clause }}</h5>
+    <p class="mb-1"><b>Question:</b> {{ selected.question }}</p>
+    <p class="mb-2"><b>Why it matters for air safety:</b> {{ selected.why }}</p>
+    <pre class="bg-light border rounded p-2 small" style="white-space:pre-wrap">{{ selected.sql }}</pre>
+    {% if error %}
+      <div class="alert alert-danger">The query could not run: {{ error }}</div>
+    {% else %}
+      <p class="text-muted small">{{ total }} row{{ '' if total == 1 else 's' }} in {{ ms }} ms
+        {% if total > max_rows %}(showing the first {{ max_rows }}){% endif %}</p>
+      <div class="table-responsive">
+      <table class="table table-sm table-striped">
+        <thead><tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+        <tbody>{% for r in rows %}<tr>{% for v in r %}<td style="max-width:420px;overflow-wrap:anywhere">{{ v }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+      </table></div>
+    {% endif %}
+  {% else %}
+    <div class="text-muted">Pick a query on the left to see its SQL and result.</div>
+  {% endif %}
+  </div>
+</div>
+{% endblock %}

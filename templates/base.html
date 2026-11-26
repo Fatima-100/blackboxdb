@@ -63,6 +63,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--orange);outline-off
    {% if role != 'Airline' %}<a class="nav-item {{ 'active' if request.endpoint=='reports' }}" href="/reports">Reports</a>
    
    {% endif %}
+   {% if role != 'Airline' %}<a class="nav-item {{ 'active' if request.endpoint=='queries' }}" href="/queries">Query Library</a>{% endif %}
    {% if role in ('Admin', 'Officer') %}<a class="nav-item {{ 'active' if request.endpoint in ('import_page','import_preview','import_result') }}" href="/import">Import data</a>{% endif %}
    {% if role != 'Airline' %}<a class="nav-item {{ 'active' if request.endpoint=='audit' }}" href="/audit">Audit log</a>{% endif %}
    {% if role == 'Admin' %}<a class="nav-item {{ 'active' if request.endpoint=='admin' }}" href="/admin">Admin</a>{% endif %}
