@@ -5,8 +5,7 @@ import pyodbc
 import datetime as dt
 from db import query, execute, clean, conn
 from reports_sql import REPORTS
-import import_routes
-import_routes.register(app, PERMS)
+
 app = Flask(__name__)
 app.secret_key = "blackboxdb-dev"
 
@@ -320,6 +319,9 @@ def admin_user():
             (f["username"].strip(), f["full_name"].strip(), generate_password_hash(f["password"], method="pbkdf2:sha256"),
              f["role"], airline)), "User created")
     return redirect(url_for("admin"))
-
+import import_routes
+import_routes.register(app, PERMS)
+import queries_routes
+queries_routes.register(app, PERMS)
 if __name__ == "__main__":
     app.run(debug=True)
