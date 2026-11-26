@@ -1,0 +1,217 @@
+{% extends "base.html" %}{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div>
+    <h3 class="mb-0">Incident Map</h3>
+    <small class="text-muted">Airport-linked incidents &middot; Map tiles &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a></small>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <span id="map-status" class="badge bg-secondary">Loading...</span>
+    <span id="offline-badge" class="badge bg-warning text-dark" style="display:none">Offline mode (local world outline)</span>
+  </div>
+</div>
+
+{# ---- Filter panel ---- #}
+<div class="card p-3 mb-3">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-2">
+      <label class="form-label small fw-semibold mb-1" for="f-from">From year</label>
+      <input type="number" id="f-from" class="form-control form-control-sm" min="1930" max="{{ cur_year }}" value="1995">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small fw-semibold mb-1" for="f-to">To year</label>
+      <input type="number" id="f-to" class="form-control form-control-sm" min="1930" max="{{ cur_year }}" value="{{ cur_year }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small fw-semibold mb-1" for="f-airline">Airline</label>
+      <select id="f-airline" class="form-select form-select-sm" {{ 'disabled' if locked_airline }}>
+        {% if not locked_airline %}<option value="">All airlines</option>{% endif %}
+        {% for a in airlines %}
+          <option value="{{ a.airline_id }}" {{ 'selected' if locked_airline == a.airline_id }}>{{ a.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <div class="form-label small fw-semibold mb-1">Severity</div>
+      <div class="d-flex flex-wrap gap-2">
+        <label class="form-check-label small"><input class="form-check-input sev-cb" type="checkbox" value="Minor" checked> <span class="badge" style="background:#198754">Minor</span></label>
+        <label class="form-check-label small"><input class="form-check-input sev-cb" type="checkbox" value="Serious" checked> <span class="badge text-dark" style="background:#eab308">Serious</span></label>
+        <label class="form-check-label small"><input class="form-check-input sev-cb" type="checkbox" value="Major" checked> <span class="badge" style="background:#ff6a13">Major</span></label>
+        <label class="form-check-label small"><input class="form-check-input sev-cb" type="checkbox" value="Fatal" checked> <span class="badge" style="background:#dc2626">Fatal</span></label>
+      </div>
+    </div>
+    <div class="col-md-2 d-flex gap-2 justify-content-md-end flex-wrap">
+      <button type="button" id="btn-fit" class="btn btn-sm btn-outline-dark">Fit to results</button>
+      <button type="button" id="btn-heat" class="btn btn-sm btn-outline-danger" aria-pressed="false">Heat map: Off</button>
+    </div>
+  </div>
+</div>
+
+{# ---- Map container ---- #}
+<div class="card p-2 position-relative">
+  <div id="map-spin" class="position-absolute top-50 start-50 translate-middle" style="z-index:1000">
+    <div class="spinner-border text-primary"></div>
+  </div>
+  <div id="incident-map" style="height:600px;width:100%;border-radius:8px;background:#dce6f2"></div>
+</div>
+
+{# ---- Leaflet CSS + JS (local static/leaflet/ first, CDN fallback) ---- #}
+<link rel="stylesheet" href="/static/leaflet/leaflet.css" onerror="this.onerror=null;this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'">
+<link rel="stylesheet" href="/static/leaflet/MarkerCluster.css" onerror="this.onerror=null;this.href='https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css'">
+<link rel="stylesheet" href="/static/leaflet/MarkerCluster.Default.css" onerror="this.onerror=null;this.href='https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css'">
+
+<script>
+(function(){
+  function loadScript(localSrc, cdnSrc, cb){
+    var s = document.createElement('script');
+    s.src = localSrc;
+    s.onload = cb;
+    s.onerror = function(){
+      var f = document.createElement('script');
+      f.src = cdnSrc;
+      f.onload = cb;
+      document.head.appendChild(f);
+    };
+    document.head.appendChild(s);
+  }
+  loadScript('/static/leaflet/leaflet.js', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', function(){
+    loadScript('/static/leaflet/leaflet.markercluster.js', 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js', function(){
+      loadScript('/static/leaflet/leaflet-heat.js', 'https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js', initMap);
+    });
+  });
+})();
+
+var SEV_COLORS = { Minor:'#198754', Serious:'#eab308', Major:'#ff6a13', Fatal:'#dc2626' };
+var map, clusterLayer, heatLayer, offlineLayer = null, offlineActive = false;
+var heatOn = false, lastPoints = [];
+
+function esc(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+function activateOfflineMap(){
+  if (offlineActive) return;
+  offlineActive = true;
+  document.getElementById('offline-badge').style.display = '';
+  document.getElementById('incident-map').style.background = '#d8e6f3';
+  fetch('/static/world_outline.geojson')
+    .then(function(r){ return r.json(); })
+    .then(function(geo){
+      offlineLayer = L.geoJSON(geo, {
+        style: { color:'#64748b', weight:1, fillColor:'#e2e8f0', fillOpacity:0.9 }
+      }).addTo(map);
+      offlineLayer.bringToBack();
+    })
+    .catch(function(e){ console.error('Offline outline failed', e); });
+}
+
+function initMap(){
+  map = L.map('incident-map', { worldCopyJump: true }).setView([25, 10], 2);
+
+  var tileErrors = 0;
+  var tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap contributors'
+  });
+  tiles.on('tileerror', function(){
+    tileErrors++;
+    if (tileErrors >= 3) activateOfflineMap();
+  });
+  tiles.addTo(map);
+  if (navigator.onLine === false) activateOfflineMap();
+
+  clusterLayer = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 45 });
+  map.addLayer(clusterLayer);
+
+  document.getElementById('f-from').addEventListener('change', loadPoints);
+  document.getElementById('f-to').addEventListener('change', loadPoints);
+  document.getElementById('f-airline').addEventListener('change', loadPoints);
+  document.querySelectorAll('.sev-cb').forEach(function(cb){ cb.addEventListener('change', loadPoints); });
+
+  document.getElementById('btn-fit').addEventListener('click', fitToResults);
+  document.getElementById('btn-heat').addEventListener('click', toggleHeat);
+
+  loadPoints();
+}
+
+function fitToResults(){
+  if (!lastPoints.length) return;
+  var bounds = L.latLngBounds(lastPoints.map(function(p){ return [p.latitude, p.longitude]; }));
+  map.fitBounds(bounds, { padding: [30, 30], maxZoom: 10 });
+}
+
+function toggleHeat(){
+  heatOn = !heatOn;
+  var btn = document.getElementById('btn-heat');
+  btn.textContent = heatOn ? 'Heat map: On' : 'Heat map: Off';
+  btn.classList.toggle('btn-danger', heatOn);
+  btn.classList.toggle('btn-outline-danger', !heatOn);
+  btn.setAttribute('aria-pressed', heatOn ? 'true' : 'false');
+  renderLayers();
+}
+
+function loadPoints(){
+  document.getElementById('map-spin').style.display = '';
+  var sevs = Array.from(document.querySelectorAll('.sev-cb:checked')).map(function(c){ return c.value; });
+  var p = new URLSearchParams({
+    from_year: document.getElementById('f-from').value || 1995,
+    to_year:   document.getElementById('f-to').value || {{ cur_year }},
+    severities: sevs.join(',')
+  });
+  var al = document.getElementById('f-airline').value;
+  if (al) p.set('airline_id', al);
+
+  fetch('/api/map?' + p.toString())
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      document.getElementById('map-spin').style.display = 'none';
+      if (d.error){
+        document.getElementById('map-status').textContent = 'Error: ' + d.error;
+        return;
+      }
+      lastPoints = d.points || [];
+      document.getElementById('map-status').textContent = lastPoints.length + ' pins';
+      renderLayers();
+    })
+    .catch(function(e){
+      document.getElementById('map-spin').style.display = 'none';
+      console.error(e);
+    });
+}
+
+function renderLayers(){
+  clusterLayer.clearLayers();
+  if (heatLayer){ map.removeLayer(heatLayer); heatLayer = null; }
+
+  if (heatOn && typeof L.heatLayer === 'function'){
+    var heatPts = lastPoints.map(function(p){
+      var w = p.severity === 'Fatal' ? 1.0 : (p.severity === 'Major' ? 0.7 : 0.4);
+      return [p.latitude, p.longitude, w];
+    });
+    heatLayer = L.heatLayer(heatPts, { radius: 22, blur: 18, maxZoom: 10 }).addTo(map);
+  }
+
+  var markers = [];
+  for (var i = 0; i < lastPoints.length; i++){
+    var p = lastPoints[i];
+    var color = SEV_COLORS[p.severity] || '#64748b';
+    var m = L.circleMarker([p.latitude, p.longitude], {
+      radius: 7,
+      color: '#111827',
+      weight: 1,
+      fillColor: color,
+      fillOpacity: 0.9
+    });
+    m.bindPopup(
+      '<div style="min-width:190px">' +
+      '<div><strong>' + esc(p.incident_date) + '</strong> &middot; <span class="badge" style="background:' + color + '">' + esc(p.severity) + '</span></div>' +
+      '<div class="small mt-1"><b>Airline:</b> ' + esc(p.airline) + '</div>' +
+      '<div class="small"><b>Aircraft:</b> ' + esc(p.registration) + '</div>' +
+      '<div class="small"><b>Airport:</b> ' + esc(p.iata_code || '') + ' ' + esc(p.airport_name || '') + '</div>' +
+      '<div class="small mb-2"><b>Fatalities:</b> ' + (p.fatalities || 0) + '</div>' +
+      '<a class="btn btn-sm btn-primary w-100" href="/incident/' + p.incident_id + '">Open incident #' + p.incident_id + '</a>' +
+      '</div>'
+    );
+    markers.push(m);
+  }
+  clusterLayer.addLayers(markers);
+}
+</script>
+{% endblock %}

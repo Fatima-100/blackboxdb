@@ -316,5 +316,7 @@ import wizard_routes
 wizard_routes.register(app, PERMS)
 import charts_routes
 charts_routes.register(app, PERMS)
+import map_routes
+map_routes.register(app, PERMS)
 if __name__ == "__main__":
     app.run(debug=True)
