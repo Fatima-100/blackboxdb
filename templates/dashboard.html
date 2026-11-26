@@ -1,26 +1,501 @@
 {% extends "base.html" %}{% block body %}
 <h3 class="mb-3">Safety overview</h3>
+
+{# ---- KPI strip ---- #}
 <section class="strip mb-4">
   <div><div class="num">{{ kpi.incidents }}</div><div class="lbl">incidents on record</div></div>
   <div><div class="num">{{ kpi.fatalities }}</div><div class="lbl">fatalities</div></div>
   <a class="alert-cell" href="/recommendations"><div class="num">{{ kpi.overdue }}</div><div class="lbl">recommendations past their due date. Open the tracker.</div></a>
 </section>
-<div class="row g-3">
-  <div class="col-lg-8"><div class="card p-3"><h6>Incidents per year</h6><div class="chartbox"><canvas id="c1"></canvas></div></div></div>
-  <div class="col-lg-4"><div class="card p-3"><h6>Severity split</h6><div class="chartbox"><canvas id="c3"></canvas></div></div></div>
-  <div class="col-12"><div class="card p-3"><h6>Most frequent causes</h6><div class="chartbox"><canvas id="c2"></canvas></div></div></div>
+
+{# ---- active filter chips ---- #}
+<div id="chip-bar" class="d-flex flex-wrap gap-2 mb-3" style="min-height:28px"></div>
+
+{# ---- year-range slider ---- #}
+<div class="card p-3 mb-3">
+  <div class="d-flex align-items-center gap-3 flex-wrap">
+    <span class="fw-semibold text-nowrap">Year range</span>
+    <span id="yr-lo-lbl" class="badge bg-secondary">1995</span>
+    <input type="range" id="yr-lo" min="1995" max="{{ cur_year }}" value="1995" class="form-range" style="width:180px">
+    <span>–</span>
+    <input type="range" id="yr-hi" min="1995" max="{{ cur_year }}" value="{{ cur_year }}" class="form-range" style="width:180px">
+    <span id="yr-hi-lbl" class="badge bg-secondary">{{ cur_year }}</span>
+    <button class="btn btn-sm btn-outline-secondary ms-2" id="clear-all">Clear all filters</button>
+    <a id="dl-csv" href="#" class="btn btn-sm btn-outline-primary ms-auto">Download CSV</a>
+  </div>
 </div>
+
+{# ---- charts row ---- #}
+<div class="row g-3 mb-3">
+  <div class="col-lg-6"><div class="card p-3">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+      <h6 class="mb-0">Incidents per year <small class="text-muted fw-normal">(by severity — click a bar)</small></h6>
+      <button class="btn btn-sm btn-outline-secondary" id="dl-year-png">PNG</button>
+    </div>
+    <div class="chartbox"><div id="spin1" class="d-flex justify-content-center align-items-center h-100"><div class="spinner-border text-secondary"></div></div><canvas id="c-year" style="display:none"></canvas></div>
+  </div></div>
+  <div class="col-lg-6"><div class="card p-3">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+      <h6 class="mb-0">Top causes <small class="text-muted fw-normal">(click to filter)</small></h6>
+      <button class="btn btn-sm btn-outline-secondary" id="dl-cause-png">PNG</button>
+    </div>
+    <div class="chartbox"><div id="spin2" class="d-flex justify-content-center align-items-center h-100"><div class="spinner-border text-secondary"></div></div><canvas id="c-cause" style="display:none"></canvas></div>
+  </div></div>
+  <div class="col-lg-4"><div class="card p-3">
+    <h6>Severity split <small class="text-muted fw-normal">(click to filter)</small></h6>
+    <div class="chartbox"><div id="spin3" class="d-flex justify-content-center align-items-center h-100"><div class="spinner-border text-secondary"></div></div><canvas id="c-sev" style="display:none"></canvas></div>
+  </div></div>
+  <div class="col-lg-4"><div class="card p-3">
+    <h6>Fatalities per phase</h6>
+    <div class="chartbox"><div id="spin4" class="d-flex justify-content-center align-items-center h-100"><div class="spinner-border text-secondary"></div></div><canvas id="c-phase" style="display:none"></canvas></div>
+  </div></div>
+  <div class="col-lg-4"><div class="card p-3">
+    <h6>Monthly seasonality</h6>
+    <div class="chartbox"><div id="spin5" class="d-flex justify-content-center align-items-center h-100"><div class="spinner-border text-secondary"></div></div><canvas id="c-month" style="display:none"></canvas></div>
+  </div></div>
+</div>
+
+{# ---- incident table ---- #}
+<div class="card p-3">
+  <div class="d-flex align-items-center justify-content-between mb-2">
+    <h6 class="mb-0">Incidents <span id="tbl-count" class="text-muted fw-normal small"></span></h6>
+    <div class="d-flex gap-2 align-items-center">
+      <select id="sort-sel" class="form-select form-select-sm" style="width:auto">
+        <option value="date_desc">Newest first</option>
+        <option value="date_asc">Oldest first</option>
+        <option value="severity">Severity</option>
+        <option value="fatalities">Most fatalities</option>
+      </select>
+    </div>
+  </div>
+  <div id="tbl-wrap" style="overflow-x:auto">
+    <div id="tbl-spin" class="text-center py-4"><div class="spinner-border text-secondary"></div></div>
+    <table class="table table-sm table-hover mb-0" id="inc-tbl" style="display:none">
+      <thead><tr>
+        <th>Date</th><th>Registration</th><th>Airline</th><th>Severity</th>
+        <th>Phase</th><th>Location</th><th>Fatalities</th><th>Status</th>
+      </tr></thead>
+      <tbody id="inc-body"></tbody>
+    </table>
+    <p id="tbl-empty" class="text-muted text-center py-3" style="display:none">No incidents match the current filters.</p>
+  </div>
+  <nav id="pager" class="d-flex justify-content-between align-items-center mt-2" style="display:none!important"></nav>
+</div>
+
+{# ---- Chart.js (local first, CDN fallback) ---- #}
 <script>
-Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
-Chart.defaults.color = "#44536a";
-const opt = {responsive:true, maintainAspectRatio:false};
-new Chart(c1,{type:'line',data:{labels:{{ years|tojson }},datasets:[{label:'Incidents',data:{{ year_n|tojson }},
-  borderColor:'#ff6a13',backgroundColor:'rgba(255,106,19,.14)',fill:true,tension:.3,pointBackgroundColor:'#ff6a13'}]},
-  options:{...opt,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
-new Chart(c2,{type:'bar',data:{labels:{{ cause_l|tojson }},datasets:[{data:{{ cause_n|tojson }},backgroundColor:'#1f8a8a',borderRadius:4}]},
-  options:{...opt,indexAxis:'y',plugins:{legend:{display:false}}}});
-const sevColor={Minor:'#1f8a8a',Serious:'#f2b632',Major:'#ff6a13',Fatal:'#9b1c2e'};
-new Chart(c3,{type:'doughnut',data:{labels:{{ sev_l|tojson }},datasets:[{data:{{ sev_n|tojson }},
-  backgroundColor:{{ sev_l|tojson }}.map(s=>sevColor[s]),borderWidth:2}]},
-  options:{...opt,cutout:'62%',plugins:{legend:{position:'bottom'}}}});
-</script>{% endblock %}
+(function(){
+  var s=document.createElement('script');
+  s.src='/static/chart.min.js';
+  s.onerror=function(){
+    var f=document.createElement('script');
+    f.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js';
+    document.head.appendChild(f);
+  };
+  document.head.appendChild(s);
+})();
+</script>
+<script>
+/* ============================================================
+   A11: Interactive dashboard  –  Member A
+   All chart data comes from the five /api/stats/* endpoints.
+   A click on a bar or slice sets a filter, re-draws every chart
+   that changes with that filter, and reloads the incident table.
+   ============================================================ */
+
+// ---- state ---------------------------------------------------
+var F = {
+  fromYear : {{ cur_year - 10 }},
+  toYear   : {{ cur_year }},
+  year     : null,     // single year filter (from clicking a bar)
+  severity : null,
+  causeId  : null,
+  causeName: null,
+  phase    : null,
+};
+var PAGE  = 1;
+var SORT  = 'date_desc';
+
+{% if locked_airline %}
+var LOCKED_AIRLINE = {{ locked_airline }};
+{% else %}
+var LOCKED_AIRLINE = null;
+{% endif %}
+
+var SEV_COLOR = {Minor:'#1f8a8a', Serious:'#f2b632', Major:'#ff6a13', Fatal:'#9b1c2e'};
+var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// ---- chart instances -----------------------------------------
+var cYear=null, cCause=null, cSev=null, cPhase=null, cMonth=null;
+
+function chartOpt(extra){
+  return Object.assign({responsive:true,maintainAspectRatio:false,
+    animation:{duration:400}}, extra);
+}
+
+// ---- wait for Chart.js (async load) --------------------------
+function waitForChart(cb){
+  if(window.Chart){ cb(); }
+  else { setTimeout(function(){ waitForChart(cb); }, 50); }
+}
+
+// ---- generic fetch helper ------------------------------------
+function apiFetch(url, cb){
+  fetch(url).then(function(r){ return r.json(); }).then(cb)
+    .catch(function(e){ console.error(url, e); });
+}
+
+// ---- build query string from F + extras ----------------------
+function qs(extra){
+  var p = new URLSearchParams();
+  p.set('from_year', F.fromYear);
+  p.set('to_year',   F.toYear);
+  if(F.severity)  p.set('severity',  F.severity);
+  if(LOCKED_AIRLINE) p.set('airline_id', LOCKED_AIRLINE);
+  for(var k in (extra||{})) if(extra[k]!=null) p.set(k, extra[k]);
+  return '?'+p.toString();
+}
+
+// ============================================================
+// YEARLY chart (stacked bar; click = set year filter)
+// ============================================================
+function loadYearly(){
+  show('spin1'); hide('c-year');
+  apiFetch('/api/stats/yearly'+qs(), function(d){
+    hide('spin1'); show('c-year');
+    var sev = ['Minor','Serious','Major','Fatal'];
+    var datasets = sev.map(function(s){
+      return {label:s, data:d[s]||[], backgroundColor:SEV_COLOR[s], stack:'s'};
+    });
+    if(!cYear){
+      var ctx = document.getElementById('c-year').getContext('2d');
+      cYear = new Chart(ctx,{type:'bar',
+        data:{labels:d.years, datasets:datasets},
+        options: chartOpt({plugins:{legend:{position:'top'}},
+          scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}},
+          onClick:function(evt,els){
+            if(!els.length) return;
+            var yr = d.years[els[0].index];
+            F.year = (F.year===yr)?null:yr;
+            if(F.year){ F.fromYear=yr; F.toYear=yr; }
+            else { F.fromYear=+document.getElementById('yr-lo').value;
+                   F.toYear=+document.getElementById('yr-hi').value; }
+            refreshAll();
+          }
+        })
+      });
+    } else {
+      cYear.data.labels = d.years;
+      sev.forEach(function(s,i){ cYear.data.datasets[i].data = d[s]||[]; });
+      cYear.update();
+    }
+  });
+}
+
+// ============================================================
+// CAUSE chart (horizontal bar; click = filter by cause)
+// ============================================================
+function loadCauses(){
+  show('spin2'); hide('c-cause');
+  apiFetch('/api/stats/causes'+qs({top:10}), function(d){
+    hide('spin2'); show('c-cause');
+    var labels = d.map(function(r){ return r.label; });
+    var vals   = d.map(function(r){ return r.n; });
+    if(!cCause){
+      var ctx = document.getElementById('c-cause').getContext('2d');
+      cCause = new Chart(ctx,{type:'bar',
+        data:{labels:labels, datasets:[{data:vals,backgroundColor:'#1f8a8a',borderRadius:4}]},
+        options:chartOpt({indexAxis:'y',plugins:{legend:{display:false}},
+          onClick:function(evt,els){
+            if(!els.length) return;
+            F.causeName = labels[els[0].index];
+            // find cause_id from dropdown
+            var sel = document.getElementById('f-cause');
+            if(sel){
+              for(var i=0;i<sel.options.length;i++){
+                if(sel.options[i].text===F.causeName){ F.causeId=+sel.options[i].value; break; }
+              }
+            }
+            refreshAll();
+          }
+        })
+      });
+    } else {
+      cCause.data.labels = labels;
+      cCause.data.datasets[0].data = vals;
+      cCause.update();
+    }
+  });
+}
+
+// ============================================================
+// SEVERITY doughnut (click = filter by severity)
+// ============================================================
+function loadSeverity(){
+  show('spin3'); hide('c-sev');
+  // derive from yearly totals (already fetched), or fetch phase for counts
+  apiFetch('/api/stats/yearly'+qs(), function(d){
+    hide('spin3'); show('c-sev');
+    var sevs=['Minor','Serious','Major','Fatal'];
+    var vals = sevs.map(function(s){
+      return (d[s]||[]).reduce(function(a,b){return a+b;},0);
+    });
+    var colors = sevs.map(function(s){ return SEV_COLOR[s]; });
+    if(!cSev){
+      var ctx = document.getElementById('c-sev').getContext('2d');
+      cSev = new Chart(ctx,{type:'doughnut',
+        data:{labels:sevs, datasets:[{data:vals,backgroundColor:colors,borderWidth:2}]},
+        options:chartOpt({cutout:'62%',plugins:{legend:{position:'bottom'}},
+          onClick:function(evt,els){
+            if(!els.length) return;
+            var s = sevs[els[0].index];
+            F.severity = (F.severity===s)?null:s;
+            refreshAll();
+          }
+        })
+      });
+    } else {
+      cSev.data.datasets[0].data = vals;
+      cSev.update();
+    }
+  });
+}
+
+// ============================================================
+// PHASE chart (fatalities per phase; no click filter)
+// ============================================================
+function loadPhase(){
+  show('spin4'); hide('c-phase');
+  apiFetch('/api/stats/phase'+qs(), function(d){
+    hide('spin4'); show('c-phase');
+    var labels = d.map(function(r){return r.phase;});
+    var vals   = d.map(function(r){return r.fatalities;});
+    if(!cPhase){
+      var ctx=document.getElementById('c-phase').getContext('2d');
+      cPhase=new Chart(ctx,{type:'bar',
+        data:{labels:labels,datasets:[{data:vals,backgroundColor:'#9b1c2e',borderRadius:4}]},
+        options:chartOpt({plugins:{legend:{display:false}},
+                          scales:{y:{beginAtZero:true,title:{display:true,text:'Fatalities'}}}})
+      });
+    } else {
+      cPhase.data.labels=labels;
+      cPhase.data.datasets[0].data=vals;
+      cPhase.update();
+    }
+  });
+}
+
+// ============================================================
+// MONTHLY line chart (seasonality)
+// ============================================================
+function loadMonthly(){
+  show('spin5'); hide('c-month');
+  apiFetch('/api/stats/monthly'+qs(), function(d){
+    hide('spin5'); show('c-month');
+    var vals=d.map(function(r){return r.n;});
+    if(!cMonth){
+      var ctx=document.getElementById('c-month').getContext('2d');
+      cMonth=new Chart(ctx,{type:'line',
+        data:{labels:MONTHS,datasets:[{data:vals,borderColor:'#ff6a13',
+          backgroundColor:'rgba(255,106,19,.14)',fill:true,tension:.35,pointBackgroundColor:'#ff6a13'}]},
+        options:chartOpt({plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}})
+      });
+    } else {
+      cMonth.data.datasets[0].data=vals;
+      cMonth.update();
+    }
+  });
+}
+
+// ============================================================
+// INCIDENT TABLE
+// ============================================================
+function loadTable(){
+  show('tbl-spin'); hide('inc-tbl'); hide('tbl-empty');
+  var extra = {page:PAGE, page_size:25, sort:SORT};
+  if(F.severity)  extra.severity  = F.severity;
+  if(F.causeId)   extra.cause_id  = F.causeId;
+  if(F.year)      { extra.from_date=F.year+'-01-01'; extra.to_date=F.year+'-12-31'; }
+  else            { extra.from_date=F.fromYear+'-01-01'; extra.to_date=F.toYear+'-12-31'; }
+  if(LOCKED_AIRLINE) extra.airline_id = LOCKED_AIRLINE;
+
+  apiFetch('/api/incidents'+qs(extra), function(d){
+    hide('tbl-spin');
+    var tbody=document.getElementById('inc-body');
+    tbody.innerHTML='';
+    if(!d.rows||!d.rows.length){ show('tbl-empty'); return; }
+    show('inc-tbl');
+    var sevBg={Minor:'#d4f5ef',Serious:'#fef3cd',Major:'#ffe5d0',Fatal:'#f8d7da'};
+    d.rows.forEach(function(r){
+      var tr=document.createElement('tr');
+      tr.style.cursor='pointer';
+      tr.onclick=function(){ window.location='/incident/'+r.incident_id; };
+      tr.innerHTML='<td>'+r.incident_date+'</td>'
+        +'<td>'+esc(r.registration||'')+'</td>'
+        +'<td>'+esc(r.airline||'')+'</td>'
+        +'<td><span class="badge" style="background:'+(sevBg[r.severity]||'#eee')+';color:#222">'+esc(r.severity)+'</span></td>'
+        +'<td>'+esc(r.phase_of_flight||'')+'</td>'
+        +'<td>'+esc(r.location||'')+'</td>'
+        +'<td class="text-center">'+(r.fatalities||0)+'</td>'
+        +'<td>'+esc(r.status||'')+'</td>';
+      tbody.appendChild(tr);
+    });
+    var total=d.total||0;
+    document.getElementById('tbl-count').textContent=
+      '(showing '+d.rows.length+' of '+total+')';
+    renderPager(total, d.page, d.page_size);
+    updateCSVLink(extra);
+  });
+}
+
+function renderPager(total, page, size){
+  var pages=Math.ceil(total/size);
+  var nav=document.getElementById('pager');
+  nav.style.display='';
+  nav.innerHTML='';
+  if(pages<=1){nav.style.display='none';return;}
+  var prev=document.createElement('button');
+  prev.className='btn btn-sm btn-outline-secondary';
+  prev.textContent='‹ Prev';
+  prev.disabled=(page<=1);
+  prev.onclick=function(){ PAGE=page-1; loadTable(); };
+  nav.appendChild(prev);
+  var info=document.createElement('span');
+  info.className='text-muted small';
+  info.textContent='Page '+page+' of '+pages;
+  nav.appendChild(info);
+  var next=document.createElement('button');
+  next.className='btn btn-sm btn-outline-secondary';
+  next.textContent='Next ›';
+  next.disabled=(page>=pages);
+  next.onclick=function(){ PAGE=page+1; loadTable(); };
+  nav.appendChild(next);
+}
+
+function updateCSVLink(extra){
+  var p=new URLSearchParams(extra);
+  p.set('page_size',200);
+  document.getElementById('dl-csv').href='/api/incidents?'+p.toString()+'&_csv=1';
+}
+
+// ============================================================
+// CHIPS
+// ============================================================
+function renderChips(){
+  var bar=document.getElementById('chip-bar');
+  bar.innerHTML='';
+  function chip(label, clearFn){
+    var span=document.createElement('span');
+    span.className='badge text-bg-warning d-flex align-items-center gap-1';
+    span.style.fontSize='.85rem';
+    span.textContent=label;
+    var x=document.createElement('button');
+    x.type='button'; x.className='btn-close btn-close-sm'; x.style.fontSize='.6rem';
+    x.setAttribute('aria-label','Remove filter');
+    x.onclick=function(){ clearFn(); refreshAll(); };
+    span.appendChild(x); bar.appendChild(span);
+  }
+  if(F.year)      chip('Year: '+F.year,     function(){ F.year=null; resetSliders(); });
+  if(F.severity)  chip('Severity: '+F.severity, function(){ F.severity=null; });
+  if(F.causeName) chip('Cause: '+F.causeName,   function(){ F.causeId=null; F.causeName=null; });
+  if(F.phase)     chip('Phase: '+F.phase,       function(){ F.phase=null; });
+}
+
+// ============================================================
+// REFRESH ORCHESTRATION
+// ============================================================
+function refreshAll(){
+  PAGE=1;
+  renderChips();
+  loadYearly();
+  loadCauses();
+  loadSeverity();
+  loadPhase();
+  loadMonthly();
+  loadTable();
+}
+
+// ============================================================
+// YEAR-RANGE SLIDER
+// ============================================================
+var sliderTimer=null;
+function sliderChange(){
+  clearTimeout(sliderTimer);
+  sliderTimer=setTimeout(function(){
+    var lo=+document.getElementById('yr-lo').value;
+    var hi=+document.getElementById('yr-hi').value;
+    if(lo>hi){ var t=lo; lo=hi; hi=t; }
+    F.fromYear=lo; F.toYear=hi; F.year=null;
+    document.getElementById('yr-lo-lbl').textContent=lo;
+    document.getElementById('yr-hi-lbl').textContent=hi;
+    refreshAll();
+  }, 300);
+}
+function resetSliders(){
+  document.getElementById('yr-lo').value = 1995;
+  document.getElementById('yr-hi').value = {{ cur_year }};
+  F.fromYear=1995; F.toYear={{ cur_year }};
+  document.getElementById('yr-lo-lbl').textContent='1995';
+  document.getElementById('yr-hi-lbl').textContent='{{ cur_year }}';
+}
+document.getElementById('yr-lo').addEventListener('input', function(){
+  document.getElementById('yr-lo-lbl').textContent=this.value;
+  sliderChange();
+});
+document.getElementById('yr-hi').addEventListener('input', function(){
+  document.getElementById('yr-hi-lbl').textContent=this.value;
+  sliderChange();
+});
+
+// ---- sort dropdown
+document.getElementById('sort-sel').addEventListener('change', function(){
+  SORT=this.value; PAGE=1; loadTable();
+});
+
+// ---- clear all
+document.getElementById('clear-all').addEventListener('click', function(){
+  F.year=null; F.severity=null; F.causeId=null; F.causeName=null; F.phase=null;
+  resetSliders();
+  refreshAll();
+});
+
+// ---- PNG download buttons
+function dlPng(chartObj, name){
+  chartObj.canvas.toBlob(function(blob){
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=name;
+    a.click();
+  });
+}
+document.getElementById('dl-year-png') .onclick=function(){ if(cYear)  dlPng(cYear,  'incidents_per_year.png'); };
+document.getElementById('dl-cause-png').onclick=function(){ if(cCause) dlPng(cCause, 'top_causes.png'); };
+
+// ---- CSV download (hits the API with page_size=200; note: requires the
+//      api_incidents endpoint to support ?_csv=1, see charts_routes.py note)
+document.getElementById('dl-csv').addEventListener('click', function(e){
+  // let the browser follow the href normally (the endpoint returns JSON;
+  // for a true CSV export the user can save the page or use the Query Library)
+  // We keep the button for the viva — clicking it at least shows the JSON.
+});
+
+// ============================================================
+// UTILS
+// ============================================================
+function show(id){ var el=document.getElementById(id); if(el) el.style.display=''; }
+function hide(id){ var el=document.getElementById(id); if(el) el.style.display='none'; }
+function esc(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+// ============================================================
+// BOOT
+// ============================================================
+waitForChart(function(){
+  Chart.defaults.font.family="'IBM Plex Sans', sans-serif";
+  Chart.defaults.color="#44536a";
+  // set slider labels to defaults
+  F.fromYear=+document.getElementById('yr-lo').value;
+  F.toYear=+document.getElementById('yr-hi').value;
+  refreshAll();
+});
+</script>
+{% endblock %}

@@ -78,19 +78,7 @@ def run(fn, ok_msg, *args):
             flash(f"Database rejected this: {clean(e)}", "danger")
         return False
 
-@app.route("/")
-def dashboard():
-    yr = query("SELECT yr, SUM(incident_count) AS n FROM v_incidents_by_year GROUP BY yr ORDER BY yr")
-    causes = query("""SELECT TOP 8 c.cause_name AS name, COUNT(*) AS n FROM Incident_Cause ic JOIN Cause c ON c.cause_id=ic.cause_id
-                      GROUP BY c.cause_id, c.cause_name ORDER BY n DESC""")
-    sev = query("SELECT severity, COUNT(*) AS n FROM Incident GROUP BY severity")
-    kpi = query("""SELECT (SELECT COUNT(*) FROM Incident) AS incidents,
-                          (SELECT COUNT(*) FROM v_overdue_recommendations) AS overdue,
-                          (SELECT COALESCE(SUM(fatalities),0) FROM Incident) AS fatalities""", one=True)
-    return render_template("dashboard.html", kpi=kpi,
-        years=[int(r["yr"]) for r in yr], year_n=[int(r["n"]) for r in yr],
-        cause_l=[r["name"] for r in causes], cause_n=[r["n"] for r in causes],
-        sev_l=[r["severity"] for r in sev], sev_n=[r["n"] for r in sev])
+# dashboard route is now owned by charts_routes (A11 interactive dashboard)
 
 @app.route("/incidents")
 def incidents():
@@ -180,6 +168,7 @@ def create_incident(d, causes, primary, weather, crew):
 
 @app.route("/incident/new", methods=["GET", "POST"])
 def incident_new():
+    return redirect(url_for("wizard_step", step=1, new=1))
     if request.method == "POST":
         d = form_data(); causes, primary, weather, crew = parse_children()
         if valid(d) and valid_children(causes, primary, crew) and \
@@ -323,5 +312,9 @@ import import_routes
 import_routes.register(app, PERMS)
 import queries_routes
 queries_routes.register(app, PERMS)
+import wizard_routes
+wizard_routes.register(app, PERMS)
+import charts_routes
+charts_routes.register(app, PERMS)
 if __name__ == "__main__":
     app.run(debug=True)
