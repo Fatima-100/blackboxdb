@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h4 class="mb-0">Report an incident</h4>
+  <a class="small text-muted" href="/incident/new/1?new=1" onclick="return confirm('Throw away all answers and start again?')">Start over</a>
+</div>
+
+<div class="progress mb-1" style="height:8px">
+  <div class="progress-bar" style="width: {{ (step / 5 * 100)|round|int }}%"></div>
+</div>
+<div class="d-flex justify-content-between small mb-3">
+  {% for n, label in step_names.items() %}
+    <span class="{{ 'fw-bold' if n == step else 'text-muted' }}">{{ n }}. {{ label }}</span>
+  {% endfor %}
+</div>
+
+{% if errors %}
+<div class="alert alert-danger" id="server-errors">
+  <ul class="mb-0">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% if dup_id %}<a href="/incident/{{ dup_id }}">Open incident #{{ dup_id }}</a>{% endif %}
+</div>
+{% endif %}
+<div class="alert alert-danger d-none" id="js-errors"></div>
+
+{% if step == 5 %}
+{# ------------------------------------------------------------ step 5: review #}
+{% set ac = summary[1] %}{% set ev = summary[2] %}{% set ca = summary[3] %}{% set cr = summary[4] %}
+{% if ac.status in ('Grounded', 'Retired') %}
+  <div class="alert alert-warning">This aircraft is marked <b>{{ ac.status }}</b>.</div>
+{% endif %}
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between"><h6>1. Aircraft</h6><a href="/incident/new/1">Edit</a></div>
+  <div>{{ ac.registration }} - {{ ac.model }} ({{ ac.airline }}), built {{ ac.year_built }}</div>
+</div></div>
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between"><h6>2. Event</h6><a href="/incident/new/2">Edit</a></div>
+  <table class="table table-sm mb-0">
+    <tr><th style="width:200px">Date</th><td>{{ ev.incident_date }}</td></tr>
+    <tr><th>Location</th><td>{{ ev.location }}</td></tr>
+    <tr><th>Phase of flight</th><td>{{ ev.phase_of_flight }}</td></tr>
+    <tr><th>Severity</th><td>{{ ev.severity }}</td></tr>
+    <tr><th>Fatalities / injuries</th><td>{{ ev.fatalities }} / {{ ev.injuries }}</td></tr>
+    <tr><th>Passengers on board</th><td>{{ ev.passengers if ev.passengers is not none else '-' }}</td></tr>
+    <tr><th>Description</th><td style="white-space:pre-wrap">{{ ev.description or '-' }}</td></tr>
+  </table>
+</div></div>
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between"><h6>3. Causes</h6><a href="/incident/new/3">Edit</a></div>
+  <ul class="mb-0">{% for cid, prim in ca.causes %}
+    <li>{{ ca.names[cid] }}{% if prim %} <span class="badge bg-danger">primary</span>{% endif %}</li>{% endfor %}</ul>
+</div></div>
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between"><h6>4. Crew and weather</h6><a href="/incident/new/4">Edit</a></div>
+  {% if cr.crew %}<ul>{% for cid, role, inj in cr.crew %}<li>{{ cr.crew_names[cid] }} - {{ role }} - {{ inj }}</li>{% endfor %}</ul>
+  {% else %}<p class="text-muted mb-1">No crew listed.</p>{% endif %}
+  {% if cr.weather %}<div>Weather: {{ cr.weather[0] }}; visibility {{ cr.weather[1] if cr.weather[1] is not none else '-' }} km;
+    wind {{ cr.weather[2] if cr.weather[2] is not none else '-' }} km/h; temperature {{ cr.weather[3] if cr.weather[3] is not none else '-' }} C</div>
+  {% else %}<div class="text-muted">No weather recorded.</div>{% endif %}
+</div></div>
+
+<form method="post" id="wizard-form">
+  <a class="btn btn-outline-secondary" href="/incident/new/4">Back</a>
+  <button class="btn btn-success" type="submit">Submit incident</button>
+</form>
+
+{% else %}
+<form method="post" id="wizard-form" novalidate>
+
+{% if step == 1 %}
+{# ----------------------------------------------------------- step 1: aircraft #}
+  <div class="mb-3" style="max-width:420px">
+    <label class="form-label">Airline</label>
+    <select class="form-select" name="airline_id" id="airline">
+      <option value="">Choose an airline...</option>
+      {% for a in airlines %}<option value="{{ a.airline_id }}" {{ 'selected' if raw.get('airline_id') == a.airline_id|string }}>{{ a.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="mb-3" style="max-width:420px">
+    <label class="form-label">Aircraft</label>
+    <select class="form-select" name="aircraft_id" id="aircraft" data-selected="{{ raw.get('aircraft_id', '') }}">
+      <option value="">Choose an airline first</option>
+    </select>
+    <div class="text-danger small mt-1 d-none" id="status-note"></div>
+  </div>
+
+{% elif step == 2 %}
+{# -------------------------------------------------------------- step 2: event #}
+  <div class="row g-3" style="max-width:760px">
+    <div class="col-md-4"><label class="form-label">Date</label>
+      <input class="form-control" type="date" name="incident_date" max="{{ today }}" value="{{ raw.get('incident_date', '') }}"></div>
+    <div class="col-md-4"><label class="form-label">Phase of flight</label>
+      <select class="form-select" name="phase_of_flight"><option value="">Choose...</option>
+        {% for p in phases %}<option {{ 'selected' if raw.get('phase_of_flight') == p }}>{{ p }}</option>{% endfor %}</select></div>
+    <div class="col-md-4"><label class="form-label">Severity</label>
+      <select class="form-select" name="severity"><option value="">Choose...</option>
+        {% for s in severities %}<option {{ 'selected' if raw.get('severity') == s }}>{{ s }}</option>{% endfor %}</select></div>
+
+    <div class="col-12"><label class="form-label">Airport (search by name, city or code)</label>
+      <input class="form-control" id="airport-q" autocomplete="off" placeholder="Type at least 2 letters...">
+      <div class="list-group mt-1" id="airport-results"></div>
+      <input type="hidden" name="airport_id" id="airport-id" value="{{ raw.get('airport_id', '') }}">
+      <input type="hidden" name="airport_label" id="airport-label" value="{{ raw.get('airport_label', '') }}">
+      <div class="small mt-1" id="airport-chosen">{% if raw.get('airport_label') %}Chosen: <b>{{ raw.get('airport_label') }}</b> <a href="#" id="airport-clear">clear</a>{% endif %}</div></div>
+    <div class="col-12"><label class="form-label">Location (needed if there is no airport, for example a crash away from an airport)</label>
+      <input class="form-control" name="location" maxlength="255" value="{{ raw.get('location', '') }}"></div>
+
+    <div class="col-md-3"><label class="form-label">Fatalities</label>
+      <input class="form-control" type="number" min="0" name="fatalities" value="{{ raw.get('fatalities', '0') }}"></div>
+    <div class="col-md-3"><label class="form-label">Injuries</label>
+      <input class="form-control" type="number" min="0" name="injuries" value="{{ raw.get('injuries', '0') }}"></div>
+    <div class="col-md-3"><label class="form-label">Passengers on board</label>
+      <input class="form-control" type="number" min="0" max="32767" name="passengers" value="{{ raw.get('passengers', '') }}"></div>
+    <div class="col-12"><label class="form-label">Description</label>
+      <textarea class="form-control" rows="4" maxlength="1000" name="description">{{ raw.get('description', '') }}</textarea></div>
+  </div>
+
+{% elif step == 3 %}
+{# ------------------------------------------------------------- step 3: causes #}
+  <p class="text-muted">Tick every cause that applies, then mark <b>one</b> of them as the primary cause.</p>
+  {% for cat, items in groups.items() %}
+    <div class="card mb-2"><div class="card-body py-2">
+      <div class="fw-semibold mb-1">{{ cat }}</div>
+      <div class="row">
+      {% for c in items %}
+        <div class="col-md-6 d-flex align-items-center gap-2 mb-1">
+          <input class="form-check-input cause-box" type="checkbox" name="causes" value="{{ c.cause_id }}" id="c{{ c.cause_id }}" {{ 'checked' if c.cause_id|string in raw.get('causes', []) }}>
+          <label class="form-check-label flex-grow-1" for="c{{ c.cause_id }}">{{ c.cause_name }}</label>
+          <label class="small text-muted"><input class="form-check-input cause-radio" type="radio" name="primary" value="{{ c.cause_id }}" {{ 'checked' if c.cause_id|string in raw.get('primary', []) }}> primary</label>
+        </div>
+      {% endfor %}
+      </div>
+    </div></div>
+  {% endfor %}
+
+{% elif step == 4 %}
+{# --------------------------------------------------- step 4: crew and weather #}
+  <h6>Crew (up to {{ max_crew }})</h6>
+  {% set filled = namespace(n=1) %}
+  {% for i in range(max_crew) %}{% if raw.get('crew_' ~ i) %}{% set filled.n = i + 1 %}{% endif %}{% endfor %}
+  <div id="crew-rows">
+  {% for i in range(max_crew) %}
+    <div class="row g-2 mb-2 crew-row {{ 'd-none' if i >= filled.n }}">
+      <div class="col-md-5"><select class="form-select" name="crew_{{ i }}"><option value="">- crew member -</option>
+        {% for c in crew_list %}<option value="{{ c.crew_id }}" {{ 'selected' if raw.get('crew_' ~ i) == c.crew_id|string }}>{{ c.name }}</option>{% endfor %}</select></div>
+      <div class="col-md-4"><select class="form-select" name="role_{{ i }}">
+        {% for r in roles %}<option {{ 'selected' if raw.get('role_' ~ i) == r }}>{{ r }}</option>{% endfor %}</select></div>
+      <div class="col-md-3"><select class="form-select" name="injury_{{ i }}">
+        {% for s in injuries %}<option {{ 'selected' if raw.get('injury_' ~ i) == s }}>{{ s }}</option>{% endfor %}</select></div>
+    </div>
+  {% endfor %}
+  </div>
+  <button type="button" class="btn btn-sm btn-outline-primary mb-4" id="add-crew">Add crew</button>
+
+  <h6>Weather (optional)</h6>
+  <div class="row g-3" style="max-width:760px">
+    <div class="col-md-3"><label class="form-label">Type</label>
+      <select class="form-select" name="condition_type"><option value="">- none -</option>
+        {% for t in weathers %}<option {{ 'selected' if raw.get('condition_type') == t }}>{{ t }}</option>{% endfor %}</select></div>
+    <div class="col-md-3"><label class="form-label">Visibility (km)</label>
+      <input class="form-control" type="number" step="0.1" min="0" name="visibility_km" value="{{ raw.get('visibility_km', '') }}"></div>
+    <div class="col-md-3"><label class="form-label">Wind (km/h)</label>
+      <input class="form-control" type="number" min="0" name="wind_speed_kmh" value="{{ raw.get('wind_speed_kmh', '') }}"></div>
+    <div class="col-md-3"><label class="form-label">Temperature (C)</label>
+      <input class="form-control" type="number" name="temperature_c" value="{{ raw.get('temperature_c', '') }}"></div>
+  </div>
+{% endif %}
+
+  <div class="mt-4 d-flex gap-2">
+    {% if step > 1 %}<button class="btn btn-outline-secondary" type="submit" name="action" value="back">Back</button>{% endif %}
+    <button class="btn btn-primary" type="submit" name="action" value="next">Next</button>
+  </div>
+</form>
+{% endif %}
+
+<script>
+(function () {
+  var form = document.getElementById('wizard-form');
+  var dirty = false, step = {{ step }};
+  if (!form) return;
+  form.addEventListener('input', function () { dirty = true; });
+  window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+  form.addEventListener('submit', function () { dirty = false; });
+
+  function showErrors(list) {
+    var box = document.getElementById('js-errors');
+    box.innerHTML = '<ul class="mb-0">' + list.map(function (m) { return '<li>' + m + '</li>'; }).join('') + '</ul>';
+    box.classList.remove('d-none'); window.scrollTo(0, 0);
+  }
+  function val(n) { var el = form.elements[n]; return el ? el.value.trim() : ''; }
+
+  // ---- checks before "Next" (the server checks again; these only save a round trip)
+  form.addEventListener('submit', function (e) {
+    var btn = e.submitter; if (btn && btn.value === 'back') return;
+    var errs = [];
+    if (step === 1) {
+      if (!val('airline_id')) errs.push('Choose an airline.');
+      if (!val('aircraft_id')) errs.push('Choose an aircraft.');
+    } else if (step === 2) {
+      var d = val('incident_date');
+      if (!d) errs.push('Enter the incident date.');
+      else if (d > '{{ today }}') errs.push('The incident date cannot be in the future.');
+      if (!val('phase_of_flight')) errs.push('Choose a phase of flight.');
+      if (!val('severity')) errs.push('Choose a severity.');
+      if (!val('airport_id') && !val('location')) errs.push('Choose an airport or type a location.');
+      if (val('fatalities') !== '' && +val('fatalities') < 0) errs.push('Fatalities must be 0 or more.');
+      if (val('injuries') !== '' && +val('injuries') < 0) errs.push('Injuries must be 0 or more.');
+      if (+val('fatalities') > 0 && val('severity') && val('severity') !== 'Fatal') errs.push('Only a Fatal incident can have fatalities.');
+    } else if (step === 3) {
+      var ticked = form.querySelectorAll('.cause-box:checked').length;
+      var prim = form.querySelector('.cause-radio:checked');
+      if (!ticked) errs.push('Tick at least one cause.');
+      else if (!prim) errs.push('Mark one ticked cause as primary.');
+      else if (!document.getElementById('c' + prim.value).checked) errs.push('The primary cause must be one of the ticked causes.');
+    }
+    if (errs.length) { e.preventDefault(); showErrors(errs); }
+  });
+
+  // ---- step 1: aircraft list for the chosen airline
+  if (step === 1) {
+    var airline = document.getElementById('airline'), ac = document.getElementById('aircraft'), note = document.getElementById('status-note');
+    function loadAircraft(selected) {
+      note.classList.add('d-none');
+      if (!airline.value) { ac.innerHTML = '<option value="">Choose an airline first</option>'; return; }
+      fetch('/incident/new/aircraft?airline_id=' + encodeURIComponent(airline.value)).then(function (r) { return r.json(); }).then(function (list) {
+        ac.innerHTML = '<option value="">Choose an aircraft...</option>';
+        list.forEach(function (a) {
+          var o = document.createElement('option');
+          o.value = a.aircraft_id; o.textContent = a.registration + ' - ' + a.model + (a.status !== 'Active' ? ' (' + a.status + ')' : '');
+          o.dataset.status = a.status; if (String(a.aircraft_id) === String(selected)) o.selected = true;
+          ac.appendChild(o);
+        });
+        showStatus();
+      });
+    }
+    function showStatus() {
+      var o = ac.options[ac.selectedIndex], s = o && o.dataset ? o.dataset.status : '';
+      if (s === 'Grounded' || s === 'Retired') { note.textContent = 'Warning: this aircraft is ' + s + '.'; note.classList.remove('d-none'); }
+      else note.classList.add('d-none');
+    }
+    airline.addEventListener('change', function () { loadAircraft(''); });
+    ac.addEventListener('change', showStatus);
+    loadAircraft(ac.dataset.selected);
+  }
+
+  // ---- step 2: airport search box
+  if (step === 2) {
+    var q = document.getElementById('airport-q'), res = document.getElementById('airport-results'),
+        idEl = document.getElementById('airport-id'), labEl = document.getElementById('airport-label'),
+        chosen = document.getElementById('airport-chosen'), timer = null;
+    function setChosen(label) {
+      chosen.innerHTML = label ? 'Chosen: <b></b> <a href="#" id="airport-clear">clear</a>' : '';
+      if (label) chosen.querySelector('b').textContent = label;
+    }
+    chosen.addEventListener('click', function (e) {
+      if (e.target.id === 'airport-clear') { e.preventDefault(); idEl.value = ''; labEl.value = ''; setChosen(''); dirty = true; }
+    });
+    q.addEventListener('input', function () {
+      clearTimeout(timer);
+      var t = q.value.trim();
+      if (t.length < 2) { res.innerHTML = ''; return; }
+      timer = setTimeout(function () {
+        fetch('/incident/new/airports?q=' + encodeURIComponent(t)).then(function (r) { return r.json(); }).then(function (list) {
+          res.innerHTML = '';
+          list.forEach(function (a) {
+            var b = document.createElement('button'); b.type = 'button'; b.className = 'list-group-item list-group-item-action py-1';
+            var label = (a.iata_code ? a.iata_code + ' - ' : '') + a.name + (a.city ? ', ' + a.city : '') + (a.country ? ' (' + a.country + ')' : '');
+            b.textContent = label;
+            b.addEventListener('click', function () { idEl.value = a.airport_id; labEl.value = label; setChosen(label); res.innerHTML = ''; q.value = ''; dirty = true; });
+            res.appendChild(b);
+          });
+          if (!list.length) res.innerHTML = '<div class="list-group-item text-muted py-1">No airport found. Type the location below instead.</div>';
+        });
+      }, 250);
+    });
+  }
+
+  // ---- step 3: ticking a cause selects it as primary if none is chosen; unticking clears its radio
+  if (step === 3) {
+    form.querySelectorAll('.cause-box').forEach(function (box) {
+      box.addEventListener('change', function () {
+        var radio = form.querySelector('.cause-radio[value="' + box.value + '"]');
+        if (!box.checked && radio.checked) radio.checked = false;
+        if (box.checked && !form.querySelector('.cause-radio:checked')) radio.checked = true;
+      });
+    });
+    form.querySelectorAll('.cause-radio').forEach(function (r) {
+      r.addEventListener('change', function () { document.getElementById('c' + r.value).checked = true; });
+    });
+  }
+
+  // ---- step 4: reveal the next crew row
+  if (step === 4) {
+    var addBtn = document.getElementById('add-crew');
+    function updateAdd() { addBtn.disabled = !document.querySelector('.crew-row.d-none'); }
+    addBtn.addEventListener('click', function () {
+      var next = document.querySelector('.crew-row.d-none'); if (next) next.classList.remove('d-none'); updateAdd();
+    });
+    updateAdd();
+  }
+})();
+</script>
+{% endblock %}

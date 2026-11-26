@@ -180,6 +180,7 @@ def create_incident(d, causes, primary, weather, crew):
 
 @app.route("/incident/new", methods=["GET", "POST"])
 def incident_new():
+    return redirect(url_for("wizard_step", step=1, new=1))
     if request.method == "POST":
         d = form_data(); causes, primary, weather, crew = parse_children()
         if valid(d) and valid_children(causes, primary, crew) and \
@@ -323,5 +324,7 @@ import import_routes
 import_routes.register(app, PERMS)
 import queries_routes
 queries_routes.register(app, PERMS)
+import wizard_routes
+wizard_routes.register(app, PERMS)
 if __name__ == "__main__":
     app.run(debug=True)
