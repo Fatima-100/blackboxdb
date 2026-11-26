@@ -114,7 +114,8 @@ def incident_detail(iid):
         weather=query("SELECT * FROM Weather_Condition WHERE incident_id=?", (iid,), one=True),
         crew=query("SELECT cm.name AS full_name, ic.role_on_flight, ic.injury_status FROM Incident_Crew ic JOIN Crew_Member cm ON cm.crew_id=ic.crew_id WHERE incident_id=?", (iid,)),
         inv=query("SELECT inv.*, i.name AS full_name FROM Investigation inv JOIN Investigator i ON i.investigator_id=inv.lead_investigator_id WHERE inv.incident_id=?", (iid,), one=True),
-        recs=query("SELECT r.*, al.name airline FROM Safety_Recommendation r JOIN Airline al ON al.airline_id=r.airline_id WHERE r.incident_id=?", (iid,)))
+        recs=query("SELECT r.*, al.name airline FROM Safety_Recommendation r JOIN Airline al ON al.airline_id=r.airline_id WHERE r.incident_id=?", (iid,)),
+        similar=query("SELECT * FROM dbo.fn_SimilarIncidents(?, 5)", (iid,)))
 
 def form_data():
     f = request.form
@@ -318,5 +319,7 @@ import charts_routes
 charts_routes.register(app, PERMS)
 import map_routes
 map_routes.register(app, PERMS)
+import a13_routes
+a13_routes.register(app, PERMS)
 if __name__ == "__main__":
     app.run(debug=True)
