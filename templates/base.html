@@ -58,6 +58,8 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--orange);outline-off
   <nav class="menu">
    {% if role != 'Airline' %}<a class="nav-item {{ 'active' if request.endpoint=='dashboard' }}" href="/">Dashboard</a>{% endif %}
    <a class="nav-item {{ 'active' if request.endpoint in ('incidents','incident_detail','incident_new','incident_edit','wizard_step') }}" href="/incidents">Incidents</a>
+   <a class="nav-item {{ 'active' if request.endpoint=='search_page' }}" href="/search">Search</a>
+   <a class="nav-item {{ 'active' if request.endpoint=='risk_page' }}" href="/risk">Risk Score</a>
    <a class="nav-item {{ 'active' if request.endpoint=='map_view' }}" href="/map">Map</a>
    {% if role != 'Airline' %}<a class="nav-item {{ 'active' if request.endpoint in ('investigators','investigator_detail') }}" href="/investigators">Investigators</a>{% endif %}
    <a class="nav-item {{ 'active' if request.endpoint=='recommendations' }}" href="/recommendations">Recommendations</a>
@@ -67,7 +69,8 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--orange);outline-off
    {% if role != 'Airline' %}<a class="nav-item {{ 'active' if request.endpoint=='queries' }}" href="/queries">Query Library</a>{% endif %}
    {% if role in ('Admin', 'Officer') %}<a class="nav-item {{ 'active' if request.endpoint in ('import_page','import_preview','import_result') }}" href="/import">Import data</a>{% endif %}
    {% if role != 'Airline' %}<a class="nav-item {{ 'active' if request.endpoint=='audit' }}" href="/audit">Audit log</a>{% endif %}
-   {% if role == 'Admin' %}<a class="nav-item {{ 'active' if request.endpoint=='admin' }}" href="/admin">Admin</a>{% endif %}
+   {% if role == 'Admin' %}<a class="nav-item {{ 'active' if request.endpoint=='admin' }}" href="/admin">Admin</a>
+   <a class="nav-item {{ 'active' if request.endpoint=='demo_mode' }}" href="/admin/demo">Demo Mode</a>{% endif %}
    
   </nav>
   {% if can_edit %}<a class="add" href="/incident/new/1?new=1">Add incident</a>{% endif %}

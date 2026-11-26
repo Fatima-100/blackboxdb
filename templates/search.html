@@ -1,0 +1,162 @@
+{% extends "base.html" %}{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h3 class="mb-0">Advanced Search</h3>
+  <a href="/search" class="btn btn-sm btn-outline-secondary">Clear filters</a>
+</div>
+
+<form method="get" action="/search" class="card p-3 mb-3">
+  <div class="row g-2">
+    <div class="col-md-4">
+      <label class="form-label small fw-semibold mb-1" for="q-text">Search text (description, location, reg)</label>
+      <input type="text" id="q-text" name="text" value="{{ text }}" class="form-control form-control-sm" placeholder="e.g. engine fire">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small fw-semibold mb-1" for="q-airline">Airline</label>
+      <select id="q-airline" name="airline" class="form-select form-select-sm" {{ 'disabled' if locked_airline }}>
+        {% if not locked_airline %}<option value="">All airlines</option>{% endif %}
+        {% for a in airlines %}
+          <option value="{{ a.airline_id }}" {{ 'selected' if airline_id == a.airline_id }}>{{ a.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small fw-semibold mb-1" for="q-type">Aircraft type</label>
+      <select id="q-type" name="type" class="form-select form-select-sm">
+        <option value="">All types</option>
+        {% for t in types %}
+          <option value="{{ t.type_id }}" {{ 'selected' if type_id == t.type_id }}>{{ t.manufacturer }} {{ t.model }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small fw-semibold mb-1" for="q-cause">Cause</label>
+      <select id="q-cause" name="cause" class="form-select form-select-sm">
+        <option value="">All causes</option>
+        {% for c in causes %}
+          <option value="{{ c.cause_id }}" {{ 'selected' if cause_id == c.cause_id }}>{{ c.cause_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-4">
+      <div class="form-label small fw-semibold mb-1">Severity (multi-select)</div>
+      <div class="d-flex flex-wrap gap-2 pt-1">
+        {% for s in all_severities %}
+          <label class="form-check-label small">
+            <input class="form-check-input" type="checkbox" name="severity" value="{{ s }}" {{ 'checked' if s in severities }}> {{ s }}
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small fw-semibold mb-1" for="q-from">From date</label>
+      <input type="date" id="q-from" name="from_date" value="{{ from_date }}" class="form-control form-control-sm">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small fw-semibold mb-1" for="q-to">To date</label>
+      <input type="date" id="q-to" name="to_date" value="{{ to_date }}" class="form-control form-control-sm">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label small fw-semibold mb-1" for="q-airport">Airport</label>
+      <select id="q-airport" name="airport" class="form-select form-select-sm">
+        <option value="">All airports</option>
+        {% for ap in airports %}
+          <option value="{{ ap.airport_id }}" {{ 'selected' if airport_id == ap.airport_id }}>
+            {{ ap.iata_code or '---' }} &middot; {{ ap.name }} ({{ ap.city }})
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label small fw-semibold mb-1" for="q-sort">Sort by</label>
+      <select id="q-sort" name="sort" class="form-select form-select-sm">
+        {% for key, lbl in sorts %}
+          <option value="{{ key }}" {{ 'selected' if sort == key }}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small fw-semibold mb-1" for="q-size">Per page</label>
+      <select id="q-size" name="page_size" class="form-select form-select-sm">
+        {% for sz in page_sizes %}
+          <option value="{{ sz }}" {{ 'selected' if page_size == sz }}>{{ sz }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-7 d-flex align-items-end justify-content-end gap-2">
+      <a href="/search" class="btn btn-sm btn-outline-secondary">Clear filters</a>
+      <button type="submit" class="btn btn-sm btn-primary px-4">Search</button>
+    </div>
+  </div>
+</form>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <div class="small text-muted">
+    {% if total > 0 %}
+      Showing <strong>{{ "{:,}".format(start_idx) }}</strong> to <strong>{{ "{:,}".format(end_idx) }}</strong> of <strong>{{ "{:,}".format(total) }}</strong> incidents
+    {% else %}
+      Showing 0 of 0 incidents
+    {% endif %}
+  </div>
+  <div class="small text-muted">Page {{ page }} of {{ total_pages }}</div>
+</div>
+
+<div class="card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead>
+        <tr>
+          <th>ID</th><th>Date</th><th>Airline</th><th>Aircraft</th><th>Severity</th><th>Phase</th><th>Location / Description</th><th>Fatalities</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td><a href="/incident/{{ r.incident_id }}">#{{ r.incident_id }}</a></td>
+          <td class="text-nowrap">{{ r.incident_date }}</td>
+          <td>{{ r.airline }}</td>
+          <td class="text-nowrap">{{ r.registration|highlight_terms(text) }} <small class="text-muted">({{ r.model }})</small></td>
+          <td><span class="badge bg-{{ 'danger' if r.severity=='Fatal' else ('warning text-dark' if r.severity in ('Major','Serious') else 'success') }}">{{ r.severity }}</span></td>
+          <td>{{ r.phase_of_flight }}</td>
+          <td style="max-width:360px">
+            <div class="fw-semibold">{{ r.location|highlight_terms(text) }}</div>
+            {% if r.description %}<div class="small text-muted">{{ r.description|truncate(160)|highlight_terms(text) }}</div>{% endif %}
+          </td>
+          <td class="text-center">{{ r.fatalities }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="8" class="text-center text-muted py-4">No incidents matched your filters.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if total_pages > 1 %}
+<nav class="d-flex justify-content-between align-items-center mt-3">
+  <div>
+    {% if page > 1 %}
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('search_page') }}?{% for k,v in base_qs %}{{ k }}={{ v|urlencode }}&{% endfor %}page={{ page - 1 }}">&lsaquo; Previous</a>
+    {% else %}
+      <button class="btn btn-sm btn-outline-secondary" disabled>&lsaquo; Previous</button>
+    {% endif %}
+  </div>
+  <div class="d-flex gap-1 flex-wrap">
+    {% set win_start = [1, page - 2]|max %}
+    {% set win_end = [total_pages, page + 2]|min %}
+    {% for p in range(win_start, win_end + 1) %}
+      <a class="btn btn-sm {{ 'btn-dark' if p == page else 'btn-outline-secondary' }}"
+         href="{{ url_for('search_page') }}?{% for k,v in base_qs %}{{ k }}={{ v|urlencode }}&{% endfor %}page={{ p }}">{{ p }}</a>
+    {% endfor %}
+  </div>
+  <div>
+    {% if page < total_pages %}
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('search_page') }}?{% for k,v in base_qs %}{{ k }}={{ v|urlencode }}&{% endfor %}page={{ page + 1 }}">Next &rsaquo;</a>
+    {% else %}
+      <button class="btn btn-sm btn-outline-secondary" disabled>Next &rsaquo;</button>
+    {% endif %}
+  </div>
+</nav>
+{% endif %}
+{% endblock %}

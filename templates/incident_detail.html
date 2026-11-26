@@ -34,4 +34,31 @@
   <div class="col-md-5"><input name="rec_text" class="form-control" placeholder="Recommendation" required></div>
   <div class="col-md-2"><input type="date" name="due_date" class="form-control" required></div>
   <div class="col-md-2"><button class="btn btn-primary w-100">Issue</button></div>
- </form></div>{% endif %}{% endblock %}
+ </form></div>{% endif %}
+
+{# ---- A13: Similar past incidents card ---- #}
+<div class="card p-3 mt-4">
+  <h6 class="mb-2">Similar past incidents</h6>
+  {% if similar %}
+    <div class="list-group list-group-flush">
+    {% for s in similar %}
+      <a href="/incident/{{ s.incident_id }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <strong>#{{ s.incident_id }}</strong> &middot; {{ s.incident_date }} &middot; {{ s.airline }} ({{ s.registration }})
+          <span class="badge bg-secondary ms-1">{{ s.severity }}</span>
+          <div class="mt-1 d-flex flex-wrap gap-1">
+            {% if s.same_cause %}<span class="badge text-bg-info">same cause</span>{% endif %}
+            {% if s.same_type %}<span class="badge text-bg-primary">same aircraft type</span>{% endif %}
+            {% if s.same_phase %}<span class="badge text-bg-warning">same phase</span>{% endif %}
+            {% if s.same_airport %}<span class="badge text-bg-success">same airport</span>{% endif %}
+          </div>
+        </div>
+        <span class="badge bg-dark">Score {{ s.score }} / 7</span>
+      </a>
+    {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-muted mb-0">No similar incidents.</p>
+  {% endif %}
+</div>
+{% endblock %}
