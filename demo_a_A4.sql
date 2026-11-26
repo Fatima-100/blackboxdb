@@ -2,8 +2,13 @@
    Expect 10 PASS in the grid. Test rows are tagged 'A4TEST' and removed at
    the end. The archive test runs inside a transaction that is rolled back,
    so your real data is not changed. */
+      USE blackboxdb;
+GO
 SET NOCOUNT ON;
-DELETE FROM dbo.Incident WHERE description LIKE 'A4TEST%';   -- clean old runs
+DISABLE TRIGGER dbo.trg_incident_softdelete ON dbo.Incident;
+DELETE FROM dbo.Audit_Log WHERE table_name = 'Incident' AND record_id IN (SELECT incident_id FROM dbo.Incident WHERE description LIKE 'A4TEST%');
+DELETE FROM dbo.Incident WHERE description LIKE 'A4TEST%';
+ENABLE TRIGGER dbo.trg_incident_softdelete ON dbo.Incident;   -- clean old runs
 IF OBJECT_ID('tempdb..#r') IS NOT NULL DROP TABLE #r;
 CREATE TABLE #r (no INT, test VARCHAR(70), result VARCHAR(4), detail VARCHAR(200));
 
@@ -102,5 +107,10 @@ BEGIN TRAN;
          CASE WHEN @moved=@eligible AND @left=0 THEN 'PASS' ELSE 'FAIL' END AS result;
 ROLLBACK;
 
+DISABLE TRIGGER dbo.trg_incident_softdelete ON dbo.Incident;
+DELETE FROM dbo.Audit_Log WHERE table_name = 'Incident' AND record_id IN (SELECT incident_id FROM dbo.Incident WHERE description LIKE 'A4TEST%');
 DELETE FROM dbo.Incident WHERE description LIKE 'A4TEST%';
+ENABLE TRIGGER dbo.trg_incident_softdelete ON dbo.Incident;
 DROP TABLE #r;
+
+

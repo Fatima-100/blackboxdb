@@ -1,5 +1,8 @@
 /* demo_a_A5.sql - checks for the 5 views. Run after views_a_A5.sql.
    Changes are made inside transactions that are rolled back. */
+   USE blackboxdb;
+GO
+
 SET NOCOUNT ON;
 SELECT TOP 5 * FROM dbo.v_incident_full ORDER BY incident_id;
 SELECT TOP 5 * FROM dbo.v_fatal_incidents ORDER BY incident_id;

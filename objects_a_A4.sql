@@ -11,6 +11,8 @@
      50114 bad year range
      50115 older_than_years must be 1 or more
    ============================================================================ */
+   USE blackboxdb;
+GO
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
@@ -304,20 +306,22 @@ BEGIN
         END
         IF @own = 1 COMMIT;
     END TRY
-    BEGIN CATCH
+        BEGIN CATCH
         IF XACT_STATE() = 1
         BEGIN
             ROLLBACK TRAN archive_batch;      -- undo only the failing batch
             IF @own = 1 COMMIT;               -- keep the finished batches
-        END
+        END;
         ELSE IF XACT_STATE() = -1
         BEGIN
             ROLLBACK;
             SET @moved = 0;
-        END
+        END;
         THROW;
     END CATCH
     RETURN @moved;
 END
 GO
 PRINT 'A4 objects created.';
+
+

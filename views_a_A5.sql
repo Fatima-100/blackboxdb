@@ -2,6 +2,8 @@
    views_a_A5.sql  -  A5: Incident views (Member A)
    Run with your BlackBox database selected. Safe to run again.
    ============================================================================ */
+   USE blackboxdb;
+GO
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
