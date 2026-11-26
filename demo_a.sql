@@ -10,7 +10,9 @@ GO
 /* ---- cleanup of old test rows (safe to run many times) ---- */
 DELETE FROM Audit_Log WHERE table_name = 'Incident' AND record_id IN
   (SELECT incident_id FROM Incident WHERE aircraft_id IN (SELECT aircraft_id FROM Aircraft WHERE registration_no LIKE 'TEST-%'));
+DISABLE TRIGGER dbo.trg_incident_softdelete ON dbo.Incident;   -- real delete for test rows (needs A7 installed; if A7 is not installed yet, comment these two lines)
 DELETE FROM Incident WHERE aircraft_id IN (SELECT aircraft_id FROM Aircraft WHERE registration_no LIKE 'TEST-%');
+ENABLE TRIGGER dbo.trg_incident_softdelete ON dbo.Incident;
 DELETE FROM Flight WHERE aircraft_id IN (SELECT aircraft_id FROM Aircraft WHERE registration_no LIKE 'TEST-%');
 DELETE FROM Maintenance_Record WHERE aircraft_id IN (SELECT aircraft_id FROM Aircraft WHERE registration_no LIKE 'TEST-%');
 DELETE FROM Aircraft WHERE registration_no LIKE 'TEST-%';
@@ -203,7 +205,9 @@ SELECT SUM(CASE WHEN result = 'PASS' THEN 1 ELSE 0 END) AS passed, COUNT(*) AS t
 GO
 DELETE FROM Audit_Log WHERE table_name = 'Incident' AND record_id IN
   (SELECT incident_id FROM Incident WHERE aircraft_id IN (SELECT aircraft_id FROM Aircraft WHERE registration_no LIKE 'TEST-%'));
+DISABLE TRIGGER dbo.trg_incident_softdelete ON dbo.Incident;   -- real delete for test rows (needs A7 installed; if A7 is not installed yet, comment these two lines)
 DELETE FROM Incident WHERE aircraft_id IN (SELECT aircraft_id FROM Aircraft WHERE registration_no LIKE 'TEST-%');
+ENABLE TRIGGER dbo.trg_incident_softdelete ON dbo.Incident;
 DELETE FROM Flight WHERE aircraft_id IN (SELECT aircraft_id FROM Aircraft WHERE registration_no LIKE 'TEST-%');
 DELETE FROM Maintenance_Record WHERE aircraft_id IN (SELECT aircraft_id FROM Aircraft WHERE registration_no LIKE 'TEST-%');
 DELETE FROM Aircraft WHERE registration_no LIKE 'TEST-%';

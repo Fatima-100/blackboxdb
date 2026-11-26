@@ -92,3 +92,9 @@ SELECT * FROM #a3 ORDER BY test;
 SELECT SUM(CASE WHEN result = 'PASS' THEN 1 ELSE 0 END) AS passed, COUNT(*) AS total FROM #a3;
 DROP TABLE #a3;
 GO
+
+
+
+
+SELECT TOP 10 * FROM Incident WHERE description LIKE 'Imported from%';
+SELECT TOP 5 * FROM Audit_Log ORDER BY log_id DESC;
