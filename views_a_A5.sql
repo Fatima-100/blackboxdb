@@ -91,7 +91,8 @@ GO
    Data source for the map page (A12): only incidents with an airport.     */
 CREATE OR ALTER VIEW dbo.v_incident_map AS
 SELECT i.incident_id, ap.latitude, ap.longitude, i.severity, i.incident_date,
-       al.name AS airline, i.fatalities, ap.iata_code, ap.name AS airport_name
+       al.airline_id, al.name AS airline, a.registration_no AS registration,
+       i.fatalities, ap.iata_code, ap.name AS airport_name
   FROM dbo.Incident i
   JOIN dbo.Airport  ap ON ap.airport_id  = i.airport_id      -- INNER: airport required
   JOIN dbo.Aircraft a  ON a.aircraft_id  = i.aircraft_id
